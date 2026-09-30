@@ -40,7 +40,7 @@ class YoloDetector(ObjectDetector):
     def metadata(self) -> DetectorMetadata:
         return DetectorMetadata(
             runtime="yolo",
-            model_path=self.effective_model_path,
+            model_path=self.model_path,
             scope="person-only",
             confidence_threshold=self.confidence_threshold,
             loaded=self._model is not None,
@@ -59,12 +59,22 @@ class YoloDetector(ObjectDetector):
 
     def _effective_model_path(self, model_path: str) -> str:
         if model_path in {"", "auto"}:
-            return self.default_pretrained_model
+            model_path = self.default_pretrained_model
 
-        if model_path.endswith(".pt") and not Path(model_path).exists():
-            return self.default_pretrained_model
+        configured_path = Path(model_path)
+        if configured_path.exists():
+            return str(configured_path)
 
-        return model_path
+        project_model_path = Path(__file__).resolve().parents[2] / "models" / configured_path.name
+        if project_model_path.exists():
+            return str(project_model_path)
+
+        if configured_path.name != self.default_pretrained_model:
+            default_model_path = Path(__file__).resolve().parents[2] / "models" / self.default_pretrained_model
+            if default_model_path.exists():
+                return str(default_model_path)
+
+        return str(configured_path)
 
     def _parse_result(
         self,

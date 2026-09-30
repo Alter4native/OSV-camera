@@ -24,7 +24,7 @@ type OverviewPageProps = {
   vectorStatus: unknown;
   detection: WebcamDetection | null;
   loading: boolean;
-  onDetectWebcam: (frame: Blob) => Promise<void>;
+  onDetectWebcam: (frame: Blob, refreshDashboard?: boolean) => Promise<void>;
 };
 
 function readStatus(payload: unknown): string {
@@ -66,6 +66,9 @@ export function OverviewPage({
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const trackingTimeoutRef = useRef<number | null>(null);
+  const trackingActiveRef = useRef(false);
+  const trackingInFlightRef = useRef(false);
   const [cameraReady, setCameraReady] = useState(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [cameraDevices, setCameraDevices] = useState<MediaDeviceInfo[]>([]);
@@ -83,6 +86,10 @@ export function OverviewPage({
     navigator.mediaDevices?.addEventListener?.("devicechange", loadCameraDevices);
     return () => {
       navigator.mediaDevices?.removeEventListener?.("devicechange", loadCameraDevices);
+      trackingActiveRef.current = false;
+      if (trackingTimeoutRef.current !== null) {
+        window.clearTimeout(trackingTimeoutRef.current);
+      }
       streamRef.current?.getTracks().forEach((track) => track.stop());
     };
   }, []);
@@ -105,6 +112,11 @@ export function OverviewPage({
   async function startBrowserCamera() {
     setCameraError(null);
     try {
+      trackingActiveRef.current = false;
+      if (trackingTimeoutRef.current !== null) {
+        window.clearTimeout(trackingTimeoutRef.current);
+        trackingTimeoutRef.current = null;
+      }
       streamRef.current?.getTracks().forEach((track) => track.stop());
       const video: MediaTrackConstraints = selectedDeviceId
         ? { deviceId: { exact: selectedDeviceId }, width: { ideal: 1280 }, height: { ideal: 720 } }
@@ -125,12 +137,12 @@ export function OverviewPage({
     }
   }
 
-  async function detectBrowserFrame() {
+  async function captureBrowserFrame(): Promise<Blob | null> {
     const video = videoRef.current;
     const canvas = canvasRef.current;
     if (!video || !canvas || !cameraReady) {
       setCameraError("Сначала включите веб-камеру.");
-      return;
+      return null;
     }
 
     const width = video.videoWidth || 1280;
@@ -140,17 +152,47 @@ export function OverviewPage({
     const context = canvas.getContext("2d");
     if (!context) {
       setCameraError("Canvas недоступен для захвата кадра.");
-      return;
+      return null;
     }
 
     context.drawImage(video, 0, 0, width, height);
     const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.9));
     if (!blob) {
       setCameraError("Не удалось подготовить кадр для детекции.");
+      return null;
+    }
+
+    return blob;
+  }
+
+  async function runTrackingFrame() {
+    if (!trackingActiveRef.current || trackingInFlightRef.current) {
       return;
     }
 
+    trackingInFlightRef.current = true;
+    try {
+      const blob = await captureBrowserFrame();
+      if (blob && trackingActiveRef.current) {
+        await onDetectWebcam(blob, false);
+      }
+    } finally {
+      trackingInFlightRef.current = false;
+      if (trackingActiveRef.current) {
+        trackingTimeoutRef.current = window.setTimeout(() => void runTrackingFrame(), 650);
+      }
+    }
+  }
+
+  async function detectBrowserFrame() {
+    const blob = await captureBrowserFrame();
+    if (!blob) {
+      return;
+    }
+
+    trackingActiveRef.current = true;
     await onDetectWebcam(blob);
+    void runTrackingFrame();
   }
 
   function updateVideoAspectRatio() {

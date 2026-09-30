@@ -269,14 +269,16 @@ export function App() {
     );
   }
 
-  async function handleWebcamDetect(frame: Blob) {
+  async function handleWebcamDetect(frame: Blob, refreshDashboard = true) {
     setLoading(true);
     setNotice(null);
     try {
       const result = await detectWebcamFrame(frame);
       setWebcamDetection(result);
       setNotice(`Детекция завершена: найдено людей ${result.person_count}.`);
-      await loadDashboard();
+      if (refreshDashboard) {
+        await loadDashboard();
+      }
     } catch (error) {
       setNotice(errorMessage(error));
     } finally {

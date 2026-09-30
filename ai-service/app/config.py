@@ -58,7 +58,7 @@ class Settings(BaseSettings):
     people_count_interval_seconds: int = Field(default=10, alias="PEOPLE_COUNT_INTERVAL_SECONDS")
 
     detector_runtime: str = Field(default="yolo", alias="DETECTOR_RUNTIME")
-    model_path: str = Field(default="/app/models/yolov8n.pt", alias="MODEL_PATH")
+    model_path: str = Field(default="yolov8n.pt", alias="MODEL_PATH")
     tracker_runtime: str = Field(default="bytetrack", alias="TRACKER_RUNTIME")
     tracker_match_threshold: float = Field(default=0.3, alias="TRACKER_MATCH_THRESHOLD")
     track_ttl_frames: int = Field(default=30, alias="TRACK_TTL_FRAMES")
