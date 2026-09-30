@@ -22,8 +22,8 @@ export function LoginScreen({ error, loading, onLogin }: LoginScreenProps) {
         <div className="login-brand">
           <ShieldCheck aria-hidden="true" />
           <div>
-            <h1>TopGuard</h1>
-            <p>Панель видеоаналитики и детекции людей</p>
+            <h1>OSV-PC</h1>
+            <p>People counting · панель видеоаналитики и детекции людей</p>
           </div>
         </div>
 

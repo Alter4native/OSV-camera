@@ -10,7 +10,7 @@ $ComposeFile = ".\infra\docker-compose.yml"
 
 function Write-Step {
     param([string]$Message)
-    Write-Host "[topguard] $Message"
+    Write-Host "[osv-pc] $Message"
 }
 
 if (-not (Test-Path $CloudflaredPath)) {
@@ -39,8 +39,8 @@ try {
     Write-Error "Local API is not reachable at $OriginUrl/api/health. Start the demo stack with: docker compose -f $ComposeFile up -d --build"
 }
 
-$outFile = "C:\tmp\topguard-cloudflared.out"
-$errFile = "C:\tmp\topguard-cloudflared.err"
+$outFile = "C:\tmp\osv-pc-cloudflared.out"
+$errFile = "C:\tmp\osv-pc-cloudflared.err"
 Remove-Item $outFile, $errFile -ErrorAction SilentlyContinue
 
 Write-Step "Starting Cloudflare Tunnel..."

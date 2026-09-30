@@ -1,6 +1,6 @@
 import type { LoginResponse, User } from "../types";
 
-const SESSION_KEY = "topguard-session";
+const SESSION_KEY = "osv-pc-session";
 
 export type Session = {
   tokens: LoginResponse;

@@ -174,7 +174,7 @@ export function OverviewPage({
     <>
       <section className="dashboard-hero">
         <div>
-          <span className="eyebrow">TopGuard live</span>
+          <span className="eyebrow">OSV-PC live</span>
           <h2>Детекция людей с веб-камеры</h2>
           <p>
             Запустите одиночный анализ кадра: AI-сервис прочитает текущий кадр с локальной камеры, выполнит детекцию и

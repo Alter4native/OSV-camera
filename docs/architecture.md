@@ -1,4 +1,4 @@
-оооооооо+# AI Camera Platform - Architecture
+оооооооо+# OSV-PC - People counting Architecture
 
 ## 1. Scope MVP
 

@@ -1,8 +1,8 @@
-# AI Camera Platform - TODO Plan
+# OSV-PC - People counting TODO Plan
 
 ## Краткое резюме
 
-AI Camera Platform - модульная система компьютерного зрения для RTSP/USB камер. Основной поток MVP: camera -> video ingestion -> frame processor -> YOLO person detector -> tracker -> face recognition / future Person Re-ID -> event engine -> backend API -> PostgreSQL/vector DB/object storage -> dashboard/alerts.
+OSV-PC - модульная система компьютерного зрения для People counting на RTSP/USB камерах. Основной поток MVP: camera -> video ingestion -> frame processor -> YOLO person detector -> tracker -> face recognition / future Person Re-ID -> event engine -> backend API -> PostgreSQL/vector DB/object storage -> dashboard/alerts.
 
 Текущий анализ workspace: проект перенесен в `C:\Users\isari\Cursor\ai-camera-platform`. Готового runtime-кода, моделей и датасетов пока нет. План ниже является исходным production-oriented backlog для MVP и дальнейшего развития.
 

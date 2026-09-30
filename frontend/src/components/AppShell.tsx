@@ -42,7 +42,7 @@ export function AppShell({ activePage, children, loading, user, onNavigate, onRe
       <aside className="sidebar" aria-label="Основная навигация">
         <div className="brand">
           <ShieldCheck aria-hidden="true" />
-          <span>TopGuard</span>
+          <span>OSV-PC</span>
         </div>
 
         <nav className="nav-list">

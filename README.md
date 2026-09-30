@@ -1,4 +1,4 @@
-# AI Camera Platform
+# OSV-PC — People counting
 
 Production-oriented MVP for person-only camera intelligence:
 
