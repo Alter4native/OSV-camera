@@ -2,11 +2,11 @@
     "rewrites":  [
                      {
                          "source":  "/api/:path*",
-                         "destination":  "https://chronicle-institutes-oclc-fires.trycloudflare.com/api/:path*"
+                         "destination":  "https://heading-sims-divine-shipped.trycloudflare.com/api/:path*"
                      },
                      {
                          "source":  "/ai/:path*",
-                         "destination":  "https://chronicle-institutes-oclc-fires.trycloudflare.com/ai/:path*"
+                         "destination":  "https://heading-sims-divine-shipped.trycloudflare.com/ai/:path*"
                      },
                      {
                          "source":  "/(.*)",
