@@ -582,11 +582,12 @@ button:focus-visible {
 }
 
 .detection-video {
+  z-index: 1;
   background: rgba(12, 21, 28, 0.25);
 }
 
 .detection-image {
-  z-index: 1;
+  z-index: 0;
 }
 
 .detection-frame--portrait .detection-image,
