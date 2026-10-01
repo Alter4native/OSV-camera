@@ -14,6 +14,9 @@ import type {
 } from "../types";
 import { eventTypeLabel, formatDateTime, formatPercent, stateLabel } from "../utils/format";
 
+const TRACKING_INTERVAL_MS = 120;
+const MAX_DETECTION_WIDTH = 960;
+
 type OverviewPageProps = {
   cameras: CameraRecord[];
   events: EventRecord[];
@@ -145,8 +148,11 @@ export function OverviewPage({
       return null;
     }
 
-    const width = video.videoWidth || 1280;
-    const height = video.videoHeight || 720;
+    const sourceWidth = video.videoWidth || 1280;
+    const sourceHeight = video.videoHeight || 720;
+    const scale = Math.min(1, MAX_DETECTION_WIDTH / sourceWidth);
+    const width = Math.round(sourceWidth * scale);
+    const height = Math.round(sourceHeight * scale);
     canvas.width = width;
     canvas.height = height;
     const context = canvas.getContext("2d");
@@ -156,7 +162,7 @@ export function OverviewPage({
     }
 
     context.drawImage(video, 0, 0, width, height);
-    const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.9));
+    const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.78));
     if (!blob) {
       setCameraError("Не удалось подготовить кадр для детекции.");
       return null;
@@ -179,7 +185,7 @@ export function OverviewPage({
     } finally {
       trackingInFlightRef.current = false;
       if (trackingActiveRef.current) {
-        trackingTimeoutRef.current = window.setTimeout(() => void runTrackingFrame(), 650);
+        trackingTimeoutRef.current = window.setTimeout(() => void runTrackingFrame(), TRACKING_INTERVAL_MS);
       }
     }
   }
