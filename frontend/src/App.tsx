@@ -270,19 +270,25 @@ export function App() {
   }
 
   async function handleWebcamDetect(frame: Blob, refreshDashboard = true) {
-    setLoading(true);
-    setNotice(null);
+    if (refreshDashboard) {
+      setLoading(true);
+      setNotice(null);
+    }
     try {
       const result = await detectWebcamFrame(frame);
       setWebcamDetection(result);
-      setNotice(`Детекция завершена: найдено людей ${result.person_count}.`);
       if (refreshDashboard) {
+        setNotice(`Детекция завершена: найдено людей ${result.person_count}.`);
         await loadDashboard();
       }
     } catch (error) {
-      setNotice(errorMessage(error));
+      if (refreshDashboard) {
+        setNotice(errorMessage(error));
+      }
     } finally {
-      setLoading(false);
+      if (refreshDashboard) {
+        setLoading(false);
+      }
     }
   }
 

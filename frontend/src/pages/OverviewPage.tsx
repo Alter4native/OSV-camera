@@ -14,8 +14,9 @@ import type {
 } from "../types";
 import { eventTypeLabel, formatDateTime, formatPercent, stateLabel } from "../utils/format";
 
-const TRACKING_INTERVAL_MS = 120;
-const MAX_DETECTION_WIDTH = 960;
+const TRACKING_INTERVAL_MS = 0;
+const MAX_DETECTION_WIDTH = 1280;
+const PREDICTION_WINDOW_MS = 500;
 
 type OverviewPageProps = {
   cameras: CameraRecord[];
@@ -72,6 +73,13 @@ export function OverviewPage({
   const trackingTimeoutRef = useRef<number | null>(null);
   const trackingActiveRef = useRef(false);
   const trackingInFlightRef = useRef(false);
+  const detectionHistoryRef = useRef<{
+    previous: WebcamDetection["detections"] | null;
+    current: WebcamDetection["detections"] | null;
+    previousReceivedAt: number;
+    receivedAt: number;
+  }>({ previous: null, current: null, previousReceivedAt: 0, receivedAt: 0 });
+  const predictionFrameRef = useRef<number | null>(null);
   const [cameraReady, setCameraReady] = useState(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [cameraDevices, setCameraDevices] = useState<MediaDeviceInfo[]>([]);
@@ -83,6 +91,68 @@ export function OverviewPage({
   const peopleCountEvent = events.find((event) => event.event_type === "people_count");
   const peopleNow = Number(peopleCountEvent?.metadata.people_count ?? peopleCountEvent?.metadata.count ?? 0);
   const frame = detection?.frame;
+  const [displayDetections, setDisplayDetections] = useState<WebcamDetection["detections"]>([]);
+
+  useEffect(() => {
+    if (!detection) {
+      return;
+    }
+
+    const history = detectionHistoryRef.current;
+    history.previousReceivedAt = history.receivedAt;
+    history.previous = history.current;
+    history.current = detection.detections;
+    history.receivedAt = performance.now();
+    setDisplayDetections(detection.detections);
+
+    if (predictionFrameRef.current !== null) {
+      cancelAnimationFrame(predictionFrameRef.current);
+    }
+
+    const animatePrediction = (now: number) => {
+      const current = history.current;
+      const previous = history.previous;
+      if (!current || !previous || current.length !== previous.length) {
+        return;
+      }
+
+      const elapsed = Math.min(now - history.receivedAt, PREDICTION_WINDOW_MS);
+  const responseGap = Math.max(100, history.receivedAt - history.previousReceivedAt);
+      const movementFactor = Math.min(0.75, elapsed / responseGap);
+      setDisplayDetections(
+        current.map((item, index) => {
+          const previousItem = previous[index];
+          if (!previousItem || previousItem.class_name !== item.class_name) {
+            return item;
+          }
+
+          const delta = {
+            x1: item.bbox.x1 - previousItem.bbox.x1,
+            y1: item.bbox.y1 - previousItem.bbox.y1,
+            x2: item.bbox.x2 - previousItem.bbox.x2,
+            y2: item.bbox.y2 - previousItem.bbox.y2,
+          };
+
+          return {
+            ...item,
+            bbox: {
+              ...item.bbox,
+              x1: item.bbox.x1 + delta.x1 * movementFactor,
+              y1: item.bbox.y1 + delta.y1 * movementFactor,
+              x2: item.bbox.x2 + delta.x2 * movementFactor,
+              y2: item.bbox.y2 + delta.y2 * movementFactor,
+            },
+          };
+        }),
+      );
+
+      if (elapsed < PREDICTION_WINDOW_MS) {
+        predictionFrameRef.current = requestAnimationFrame(animatePrediction);
+      }
+    };
+
+    predictionFrameRef.current = requestAnimationFrame(animatePrediction);
+  }, [detection]);
 
   useEffect(() => {
     void loadCameraDevices();
@@ -92,6 +162,9 @@ export function OverviewPage({
       trackingActiveRef.current = false;
       if (trackingTimeoutRef.current !== null) {
         window.clearTimeout(trackingTimeoutRef.current);
+      }
+      if (predictionFrameRef.current !== null) {
+        cancelAnimationFrame(predictionFrameRef.current);
       }
       streamRef.current?.getTracks().forEach((track) => track.stop());
     };
@@ -122,8 +195,13 @@ export function OverviewPage({
       }
       streamRef.current?.getTracks().forEach((track) => track.stop());
       const video: MediaTrackConstraints = selectedDeviceId
-        ? { deviceId: { exact: selectedDeviceId }, width: { ideal: 1280 }, height: { ideal: 720 } }
-        : { width: { ideal: 1280 }, height: { ideal: 720 } };
+        ? {
+            deviceId: { exact: selectedDeviceId },
+            width: { ideal: 1920 },
+            height: { ideal: 1080 },
+            frameRate: { ideal: 30, min: 15 },
+          }
+        : { width: { ideal: 1920 }, height: { ideal: 1080 }, frameRate: { ideal: 30, min: 15 } };
       const stream = await navigator.mediaDevices.getUserMedia({ video, audio: false });
       streamRef.current = stream;
       if (videoRef.current) {
@@ -294,7 +372,7 @@ export function OverviewPage({
                 {frame.width} x {frame.height}
               </span>
             ) : null}
-            {detection?.detections.map((item, index) => {
+            {displayDetections.map((item, index) => {
               const width = frame?.width || 1;
               const height = frame?.height || 1;
               return (
