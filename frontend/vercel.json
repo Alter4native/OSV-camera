@@ -2,11 +2,11 @@
     "rewrites":  [
                      {
                          "source":  "/api/:path*",
-                         "destination":  "https://ensure-pocket-cal-suburban.trycloudflare.com/api/:path*"
+                         "destination":  "https://southampton-involving-cover-varying.trycloudflare.com/api/:path*"
                      },
                      {
                          "source":  "/ai/:path*",
-                         "destination":  "https://ensure-pocket-cal-suburban.trycloudflare.com/ai/:path*"
+                         "destination":  "https://southampton-involving-cover-varying.trycloudflare.com/ai/:path*"
                      },
                      {
                          "source":  "/(.*)",
