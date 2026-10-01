@@ -278,7 +278,6 @@ export function App() {
       const result = await detectWebcamFrame(frame);
       setWebcamDetection(result);
       if (refreshDashboard) {
-        setNotice(`Детекция завершена: найдено людей ${result.person_count}.`);
         await loadDashboard();
       }
     } catch (error) {

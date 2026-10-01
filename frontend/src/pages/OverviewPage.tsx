@@ -55,6 +55,13 @@ function classLabel(className: string): string {
   return className;
 }
 
+function detectionCenter(item: WebcamDetection["detections"][number]) {
+  return {
+    x: (item.bbox.x1 + item.bbox.x2) / 2,
+    y: (item.bbox.y1 + item.bbox.y2) / 2,
+  };
+}
+
 export function OverviewPage({
   cameras,
   events,
@@ -121,7 +128,18 @@ export function OverviewPage({
       const movementFactor = Math.min(0.75, elapsed / responseGap);
       setDisplayDetections(
         current.map((item, index) => {
-          const previousItem = previous[index];
+          const currentCenter = detectionCenter(item);
+          const previousItem = previous
+            .filter((candidate) => candidate.class_name === item.class_name)
+            .sort((left, right) => {
+              const leftCenter = detectionCenter(left);
+              const rightCenter = detectionCenter(right);
+              const leftDistance =
+                (leftCenter.x - currentCenter.x) ** 2 + (leftCenter.y - currentCenter.y) ** 2;
+              const rightDistance =
+                (rightCenter.x - currentCenter.x) ** 2 + (rightCenter.y - currentCenter.y) ** 2;
+              return leftDistance - rightDistance;
+            })[0];
           if (!previousItem || previousItem.class_name !== item.class_name) {
             return item;
           }
@@ -141,6 +159,8 @@ export function OverviewPage({
               y1: item.bbox.y1 + delta.y1 * movementFactor,
               x2: item.bbox.x2 + delta.x2 * movementFactor,
               y2: item.bbox.y2 + delta.y2 * movementFactor,
+              width: item.bbox.width + (delta.x2 - delta.x1) * movementFactor,
+              height: item.bbox.height + (delta.y2 - delta.y1) * movementFactor,
             },
           };
         }),
