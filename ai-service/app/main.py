@@ -150,7 +150,7 @@ def webcam_detect_once(max_attempts: int = 10) -> dict[str, object]:
             "width": frame.width,
             "height": frame.height,
         },
-        "frame_image": encode_frame_image(frame.image),
+        "frame_image": None,
         "person_count": len(detections),
         "detections": [detection.as_dict() for detection in detections],
         "camera": camera_manager.get_status(),
