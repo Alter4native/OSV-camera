@@ -108,9 +108,9 @@ export function OverviewPage({
     const history = detectionHistoryRef.current;
     history.previousReceivedAt = history.receivedAt;
     history.previous = history.current;
-    history.current = detection.detections;
+    history.current = detection.tracks ?? detection.detections;
     history.receivedAt = performance.now();
-    setDisplayDetections(detection.detections);
+    setDisplayDetections(detection.tracks ?? detection.detections);
 
     if (predictionFrameRef.current !== null) {
       cancelAnimationFrame(predictionFrameRef.current);

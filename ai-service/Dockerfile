@@ -10,7 +10,9 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt .
-RUN pip install --no-cache-dir --index-url https://download.pytorch.org/whl/cpu torch==2.3.1+cpu torchvision==0.18.1+cpu
+ARG TORCH_INDEX_URL=https://download.pytorch.org/whl/cpu
+ARG TORCH_PACKAGES="torch==2.3.1+cpu torchvision==0.18.1+cpu"
+RUN pip install --no-cache-dir --index-url ${TORCH_INDEX_URL} ${TORCH_PACKAGES}
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY app ./app

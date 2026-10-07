@@ -1,5 +1,7 @@
 # OSV-PC — People counting
 
+Алгоритм работы системы: [docs/system-algorithm.md](docs/system-algorithm.md)
+
 Production-oriented MVP for person-only camera intelligence:
 
 ```text
@@ -145,6 +147,15 @@ Docker Compose:
 docker compose -f .\infra\docker-compose.yml config
 docker compose -f .\infra\docker-compose.yml up --build
 ```
+
+NVIDIA GPU deployment:
+
+```powershell
+docker compose -f .\infra\docker-compose.yml -f .\infra\docker-compose.gpu.yml build ai-service
+docker compose -f .\infra\docker-compose.yml -f .\infra\docker-compose.gpu.yml up -d
+```
+
+The GPU host must have a compatible NVIDIA driver, Docker Engine and NVIDIA Container Toolkit. The GPU override switches the AI image to CUDA-enabled PyTorch and reserves one NVIDIA GPU for `ai-service`; on CPU-only machines use the regular Compose command above.
 
 ## Camera Credentials
 

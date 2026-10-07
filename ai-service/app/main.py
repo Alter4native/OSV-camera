@@ -39,6 +39,12 @@ tracker = build_tracker(
     track_ttl_frames=settings.track_ttl_frames,
     new_track_threshold=settings.tracker_new_track_threshold,
 )
+browser_tracker = build_tracker(
+    runtime=settings.tracker_runtime,
+    match_threshold=settings.tracker_match_threshold,
+    track_ttl_frames=settings.track_ttl_frames,
+    new_track_threshold=settings.tracker_new_track_threshold,
+)
 face_recognizer = build_face_recognizer(
     runtime=settings.face_recognition_runtime,
     threshold=settings.face_recognition_threshold,
@@ -173,6 +179,7 @@ async def webcam_detect_frame(file: UploadFile = File(...)) -> dict[str, object]
 
     try:
         detections, detector_payload = detect_people(frame)
+        tracked_objects = browser_tracker.update(frame.camera_id, frame.sequence, detections)
     except Exception as exc:
         raise HTTPException(
             status_code=503,
@@ -191,9 +198,10 @@ async def webcam_detect_frame(file: UploadFile = File(...)) -> dict[str, object]
             "width": frame.width,
             "height": frame.height,
         },
-        "frame_image": encode_frame_image(frame.image),
-        "person_count": len(detections),
+        "frame_image": None,
+        "person_count": len(tracked_objects),
         "detections": [detection.as_dict() for detection in detections],
+        "tracks": [tracked_object.as_dict() for tracked_object in tracked_objects],
         "camera": {
             "camera_id": frame.camera_id,
             "source_type": "browser",

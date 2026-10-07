@@ -89,6 +89,17 @@ export type WebcamDetection = {
     class_name: string;
     confidence: number;
   }>;
+  tracks?: Array<{
+    camera_id: string;
+    frame_sequence: number;
+    timestamp: string;
+    track_id: number;
+    bbox: DetectionBox;
+    class_id: number;
+    class_name: string;
+    confidence: number;
+    hits: number;
+  }>;
   camera: Record<string, unknown>;
   detector: Record<string, unknown>;
 };
