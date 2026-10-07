@@ -1,6 +1,7 @@
 # OSV-PC — People counting
 
 Алгоритм работы системы: [docs/system-algorithm.md](docs/system-algorithm.md)
+Структурно-функциональная схема по ГОСТ: [docs/architecture-gost.md](docs/architecture-gost.md)
 
 Production-oriented MVP for person-only camera intelligence:
 
