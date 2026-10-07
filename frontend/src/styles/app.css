@@ -432,6 +432,16 @@ button:focus-visible {
   border-color: #9ddbbd;
 }
 
+.hero-secondary--active {
+  color: #7f2626;
+  background: #fff0ed;
+  border-color: #e3aaa0;
+}
+
+.hero-secondary--active:hover {
+  background: #ffe1dc;
+}
+
 .metric-tile {
   display: grid;
   grid-template-columns: 34px minmax(0, 1fr);

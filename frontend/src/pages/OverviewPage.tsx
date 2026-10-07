@@ -238,6 +238,27 @@ export function OverviewPage({
     }
   }
 
+  function stopBrowserCamera() {
+    trackingActiveRef.current = false;
+    if (trackingTimeoutRef.current !== null) {
+      window.clearTimeout(trackingTimeoutRef.current);
+      trackingTimeoutRef.current = null;
+    }
+    if (predictionFrameRef.current !== null) {
+      cancelAnimationFrame(predictionFrameRef.current);
+      predictionFrameRef.current = null;
+    }
+    streamRef.current?.getTracks().forEach((track) => track.stop());
+    streamRef.current = null;
+    if (videoRef.current) {
+      videoRef.current.pause();
+      videoRef.current.srcObject = null;
+    }
+    setDisplayDetections([]);
+    setCameraReady(false);
+    setCameraError(null);
+  }
+
   async function captureBrowserFrame(): Promise<Blob | null> {
     const video = videoRef.current;
     const canvas = canvasRef.current;
@@ -340,9 +361,14 @@ export function OverviewPage({
               </select>
             </label>
           ) : null}
-          <button className="secondary-button hero-secondary" type="button" onClick={startBrowserCamera} disabled={loading}>
+          <button
+            className={`secondary-button hero-secondary ${cameraReady ? "hero-secondary--active" : ""}`}
+            type="button"
+            onClick={cameraReady ? stopBrowserCamera : startBrowserCamera}
+            disabled={loading}
+          >
             <Video aria-hidden="true" />
-            {cameraReady ? "Камера включена" : "Включить веб-камеру"}
+            {cameraReady ? "Отключить веб-камеру" : "Включить веб-камеру"}
           </button>
           <button className="primary-button hero-action" type="button" onClick={detectBrowserFrame} disabled={loading || !cameraReady}>
             <Play aria-hidden="true" />

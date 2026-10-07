@@ -137,6 +137,23 @@ export function App() {
         embeddingResult,
       ].filter((result) => result.status === "rejected").length;
 
+      const unauthorized = [
+        cameraResult,
+        eventResult,
+        personResult,
+        modelResult,
+        qualityResult,
+        settingsResult,
+        embeddingResult,
+      ].some((result) => result.status === "rejected" && result.reason instanceof ApiError && result.reason.status === 401);
+
+      if (unauthorized) {
+        clearSession();
+        setSession(null);
+        setLoginError("Сессия истекла. Войдите снова.");
+        return;
+      }
+
       if (failed > 0) {
         setNotice(`${failed} запроса панели не выполнились. Проверьте backend и AI-service.`);
       }
