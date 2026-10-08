@@ -2,11 +2,11 @@
     "rewrites":  [
                      {
                          "source":  "/api/:path*",
-                         "destination":  "https://established-purposes-regularly-thing.trycloudflare.com/api/:path*"
+                         "destination":  "https://ringtones-captured-bookmarks-component.trycloudflare.com/api/:path*"
                      },
                      {
                          "source":  "/ai/:path*",
-                         "destination":  "https://established-purposes-regularly-thing.trycloudflare.com/ai/:path*"
+                         "destination":  "https://ringtones-captured-bookmarks-component.trycloudflare.com/ai/:path*"
                      },
                      {
                          "source":  "/(.*)",
