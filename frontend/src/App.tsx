@@ -335,6 +335,7 @@ export function App() {
           detection={webcamDetection}
           loading={loading}
           onDetectWebcam={handleWebcamDetect}
+          onRealtimeDetection={setWebcamDetection}
         />
       ) : null}
 

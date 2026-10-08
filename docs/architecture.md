@@ -1,4 +1,4 @@
-оооооооо+# OSV-PC - People counting Architecture
+# OSV-PC - People counting Architecture
 
 ## 1. Scope MVP
 

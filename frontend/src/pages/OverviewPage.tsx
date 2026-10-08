@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Activity, Camera, Crosshair, Gauge, Play, Server, Video } from "lucide-react";
 
+import { WebcamDetectionSocket } from "../api/client";
 import { EmptyState } from "../components/EmptyState";
 import { MetricTile } from "../components/MetricTile";
 import { StatusBadge } from "../components/StatusBadge";
@@ -15,8 +16,9 @@ import type {
 import { eventTypeLabel, formatDateTime, formatPercent, stateLabel } from "../utils/format";
 
 const TRACKING_INTERVAL_MS = 0;
-const MAX_DETECTION_WIDTH = 1280;
-const PREDICTION_WINDOW_MS = 500;
+const MAX_DETECTION_WIDTH = 960;
+const JPEG_QUALITY = 0.68;
+const PREDICTION_WINDOW_MS = 280;
 
 type OverviewPageProps = {
   cameras: CameraRecord[];
@@ -29,6 +31,7 @@ type OverviewPageProps = {
   detection: WebcamDetection | null;
   loading: boolean;
   onDetectWebcam: (frame: Blob, refreshDashboard?: boolean) => Promise<void>;
+  onRealtimeDetection: (detection: WebcamDetection) => void;
 };
 
 function readStatus(payload: unknown): string {
@@ -62,6 +65,10 @@ function detectionCenter(item: WebcamDetection["detections"][number]) {
   };
 }
 
+function trackId(item: WebcamDetection["detections"][number]): number | null {
+  return "track_id" in item && typeof item.track_id === "number" ? item.track_id : null;
+}
+
 export function OverviewPage({
   cameras,
   events,
@@ -73,6 +80,7 @@ export function OverviewPage({
   detection,
   loading,
   onDetectWebcam,
+  onRealtimeDetection,
 }: OverviewPageProps) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -80,6 +88,7 @@ export function OverviewPage({
   const trackingTimeoutRef = useRef<number | null>(null);
   const trackingActiveRef = useRef(false);
   const trackingInFlightRef = useRef(false);
+  const trackingSocketRef = useRef<WebcamDetectionSocket | null>(null);
   const detectionHistoryRef = useRef<{
     previous: WebcamDetection["detections"] | null;
     current: WebcamDetection["detections"] | null;
@@ -124,22 +133,26 @@ export function OverviewPage({
       }
 
       const elapsed = Math.min(now - history.receivedAt, PREDICTION_WINDOW_MS);
-  const responseGap = Math.max(100, history.receivedAt - history.previousReceivedAt);
-      const movementFactor = Math.min(0.75, elapsed / responseGap);
+      const responseGap = Math.max(100, history.receivedAt - history.previousReceivedAt);
+      const movementFactor = Math.min(0.85, elapsed / responseGap);
       setDisplayDetections(
         current.map((item, index) => {
           const currentCenter = detectionCenter(item);
-          const previousItem = previous
-            .filter((candidate) => candidate.class_name === item.class_name)
-            .sort((left, right) => {
-              const leftCenter = detectionCenter(left);
-              const rightCenter = detectionCenter(right);
-              const leftDistance =
-                (leftCenter.x - currentCenter.x) ** 2 + (leftCenter.y - currentCenter.y) ** 2;
-              const rightDistance =
-                (rightCenter.x - currentCenter.x) ** 2 + (rightCenter.y - currentCenter.y) ** 2;
-              return leftDistance - rightDistance;
-            })[0];
+          const currentTrackId = trackId(item);
+          const previousItem =
+            (currentTrackId === null
+              ? previous
+                  .filter((candidate) => candidate.class_name === item.class_name)
+                  .sort((left, right) => {
+                    const leftCenter = detectionCenter(left);
+                    const rightCenter = detectionCenter(right);
+                    const leftDistance =
+                      (leftCenter.x - currentCenter.x) ** 2 + (leftCenter.y - currentCenter.y) ** 2;
+                    const rightDistance =
+                      (rightCenter.x - currentCenter.x) ** 2 + (rightCenter.y - currentCenter.y) ** 2;
+                    return leftDistance - rightDistance;
+                  })[0]
+              : previous.find((candidate) => trackId(candidate) === currentTrackId)) ?? null;
           if (!previousItem || previousItem.class_name !== item.class_name) {
             return item;
           }
@@ -180,6 +193,8 @@ export function OverviewPage({
     return () => {
       navigator.mediaDevices?.removeEventListener?.("devicechange", loadCameraDevices);
       trackingActiveRef.current = false;
+      trackingSocketRef.current?.close();
+      trackingSocketRef.current = null;
       if (trackingTimeoutRef.current !== null) {
         window.clearTimeout(trackingTimeoutRef.current);
       }
@@ -214,6 +229,8 @@ export function OverviewPage({
         trackingTimeoutRef.current = null;
       }
       streamRef.current?.getTracks().forEach((track) => track.stop());
+      detectionHistoryRef.current = { previous: null, current: null, previousReceivedAt: 0, receivedAt: 0 };
+      setDisplayDetections([]);
       const video: MediaTrackConstraints = selectedDeviceId
         ? {
             deviceId: { exact: selectedDeviceId },
@@ -240,6 +257,8 @@ export function OverviewPage({
 
   function stopBrowserCamera() {
     trackingActiveRef.current = false;
+    trackingSocketRef.current?.close();
+    trackingSocketRef.current = null;
     if (trackingTimeoutRef.current !== null) {
       window.clearTimeout(trackingTimeoutRef.current);
       trackingTimeoutRef.current = null;
@@ -281,7 +300,7 @@ export function OverviewPage({
     }
 
     context.drawImage(video, 0, 0, width, height);
-    const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.78));
+    const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/jpeg", JPEG_QUALITY));
     if (!blob) {
       setCameraError("Не удалось подготовить кадр для детекции.");
       return null;
@@ -291,7 +310,8 @@ export function OverviewPage({
   }
 
   async function runTrackingFrame() {
-    if (!trackingActiveRef.current || trackingInFlightRef.current) {
+    const socket = trackingSocketRef.current;
+    if (!trackingActiveRef.current || trackingInFlightRef.current || !socket) {
       return;
     }
 
@@ -299,7 +319,7 @@ export function OverviewPage({
     try {
       const blob = await captureBrowserFrame();
       if (blob && trackingActiveRef.current) {
-        await onDetectWebcam(blob, false);
+        onRealtimeDetection(await socket.sendFrame(blob));
       }
     } finally {
       trackingInFlightRef.current = false;
@@ -317,6 +337,15 @@ export function OverviewPage({
 
     trackingActiveRef.current = true;
     await onDetectWebcam(blob);
+    try {
+      const socket = new WebcamDetectionSocket();
+      trackingSocketRef.current = socket;
+      await socket.ready();
+    } catch (error) {
+      trackingActiveRef.current = false;
+      setCameraError(error instanceof Error ? error.message : "Не удалось открыть realtime-соединение AI");
+      return;
+    }
     void runTrackingFrame();
   }
 

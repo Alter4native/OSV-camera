@@ -3,7 +3,7 @@ import time
 
 from datetime import datetime, timezone
 
-from fastapi import FastAPI, File, HTTPException, UploadFile
+from fastapi import FastAPI, File, HTTPException, UploadFile, WebSocket, WebSocketDisconnect
 
 from app.config import get_settings
 from app.detection.factory import build_detector
@@ -167,6 +167,24 @@ def webcam_detect_once(max_attempts: int = 10) -> dict[str, object]:
 @app.post("/ai/webcam/detect-frame", tags=["detector"])
 async def webcam_detect_frame(file: UploadFile = File(...)) -> dict[str, object]:
     image = await decode_uploaded_image(file)
+    return process_browser_frame(image)
+
+
+@app.websocket("/ai/webcam/stream")
+async def webcam_stream(websocket: WebSocket) -> None:
+    await websocket.accept()
+    try:
+        while True:
+            content = await websocket.receive_bytes()
+            image = decode_image_bytes(content)
+            await websocket.send_json(process_browser_frame(image))
+    except WebSocketDisconnect:
+        return
+    except Exception as exc:
+        await websocket.send_json({"error": str(exc)})
+
+
+def process_browser_frame(image: object) -> dict[str, object]:
     height, width = image.shape[:2]
     frame = VideoFrame(
         camera_id="browser-webcam",
@@ -236,20 +254,27 @@ def demo_person_detection(frame: VideoFrame) -> Detection:
 
 
 async def decode_uploaded_image(file: UploadFile) -> object:
-    try:
-        import cv2  # type: ignore[import-not-found]
-        import numpy as np  # type: ignore[import-not-found]
-    except ImportError as exc:
-        raise HTTPException(status_code=503, detail="OpenCV is not installed") from exc
-
     content = await file.read()
     if not content:
         raise HTTPException(status_code=400, detail="Uploaded frame is empty")
 
+    try:
+        return decode_image_bytes(content)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+def decode_image_bytes(content: bytes) -> object:
+    try:
+        import cv2  # type: ignore[import-not-found]
+        import numpy as np  # type: ignore[import-not-found]
+    except ImportError as exc:
+        raise RuntimeError("OpenCV is not installed") from exc
+
     array = np.frombuffer(content, dtype=np.uint8)
     image = cv2.imdecode(array, cv2.IMREAD_COLOR)
     if image is None:
-        raise HTTPException(status_code=400, detail="Unable to decode uploaded frame")
+        raise ValueError("Unable to decode uploaded frame")
     return image
 
 

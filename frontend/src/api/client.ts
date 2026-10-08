@@ -219,3 +219,63 @@ export function detectWebcamFrame(frame: Blob): Promise<WebcamDetection> {
     body,
   });
 }
+
+export class WebcamDetectionSocket {
+  private readonly socket: WebSocket;
+  private readonly readyPromise: Promise<void>;
+  private pending: { resolve: (value: WebcamDetection) => void; reject: (reason: unknown) => void } | null = null;
+
+  constructor() {
+    const baseUrl = (import.meta.env.VITE_AI_BASE_URL ?? "/ai").replace(/\/$/, "");
+    const url = new URL(`${baseUrl}/webcam/stream`, window.location.href);
+    url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
+    this.socket = new WebSocket(url);
+    this.socket.binaryType = "arraybuffer";
+    this.readyPromise = new Promise<void>((resolve, reject) => {
+      this.socket.addEventListener("open", () => resolve(), { once: true });
+      this.socket.addEventListener("error", () => reject(new Error("Не удалось открыть realtime-соединение AI")), { once: true });
+    });
+    this.socket.addEventListener("message", (event) => {
+      if (!this.pending) {
+        return;
+      }
+
+      try {
+        const payload = JSON.parse(String(event.data)) as WebcamDetection | { error?: string };
+        if ("error" in payload && payload.error) {
+          this.pending.reject(new Error(payload.error));
+        } else {
+          this.pending.resolve(payload as WebcamDetection);
+        }
+      } catch (error) {
+        this.pending.reject(error);
+      } finally {
+        this.pending = null;
+      }
+    });
+    this.socket.addEventListener("close", () => {
+      this.pending?.reject(new Error("Realtime-соединение AI закрыто"));
+      this.pending = null;
+    });
+  }
+
+  async sendFrame(frame: Blob): Promise<WebcamDetection> {
+    await this.readyPromise;
+    if (this.pending) {
+      throw new Error("Предыдущий realtime-кадр еще обрабатывается");
+    }
+
+    return new Promise<WebcamDetection>((resolve, reject) => {
+      this.pending = { resolve, reject };
+      this.socket.send(frame);
+    });
+  }
+
+  ready(): Promise<void> {
+    return this.readyPromise;
+  }
+
+  close(): void {
+    this.socket.close();
+  }
+}
