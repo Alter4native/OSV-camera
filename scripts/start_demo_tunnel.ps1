@@ -53,6 +53,7 @@ $process = Start-Process `
     -PassThru
 
 $tunnelUrl = $null
+$candidateUrl = $null
 for ($i = 0; $i -lt 40; $i++) {
     Start-Sleep -Seconds 1
     $log = ""
@@ -63,14 +64,22 @@ for ($i = 0; $i -lt 40; $i++) {
         $log += Get-Content $outFile -Raw
     }
 
-    $match = [regex]::Match($log, "https://(?!api\.)[a-zA-Z0-9-]+\.trycloudflare\.com")
-    if ($match.Success) {
+    if (-not $candidateUrl) {
+        $match = [regex]::Match($log, "https://(?!api\.)[a-zA-Z0-9-]+\.trycloudflare\.com")
+        if ($match.Success) {
+            $candidateUrl = $match.Value
+        }
+    }
+
+    if ($candidateUrl) {
         try {
-            Invoke-WebRequest -UseBasicParsing "$($match.Value)/api/health" -TimeoutSec 10 | Out-Null
-            $tunnelUrl = $match.Value
+            Invoke-WebRequest -UseBasicParsing "$candidateUrl/api/health" -TimeoutSec 5 | Out-Null
+            $tunnelUrl = $candidateUrl
             break
         } catch {
-            Write-Step "Tunnel candidate is not reachable yet: $($match.Value)"
+            if ($i -eq 0 -or $i % 5 -eq 0) {
+                Write-Step "Tunnel candidate is not reachable yet: $candidateUrl"
+            }
         }
     }
 
