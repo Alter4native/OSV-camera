@@ -241,6 +241,9 @@ export function OverviewPage({
         : { width: { ideal: 1920 }, height: { ideal: 1080 }, frameRate: { ideal: 30, min: 15 } };
       const stream = await navigator.mediaDevices.getUserMedia({ video, audio: false });
       streamRef.current = stream;
+      stream.getVideoTracks().forEach((track) => {
+        track.addEventListener("ended", handleBrowserCameraEnded, { once: true });
+      });
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
         await videoRef.current.play();
@@ -276,6 +279,24 @@ export function OverviewPage({
     setDisplayDetections([]);
     setCameraReady(false);
     setCameraError(null);
+  }
+
+  function handleBrowserCameraEnded() {
+    trackingActiveRef.current = false;
+    trackingSocketRef.current?.close();
+    trackingSocketRef.current = null;
+    if (trackingTimeoutRef.current !== null) {
+      window.clearTimeout(trackingTimeoutRef.current);
+      trackingTimeoutRef.current = null;
+    }
+    if (predictionFrameRef.current !== null) {
+      cancelAnimationFrame(predictionFrameRef.current);
+      predictionFrameRef.current = null;
+    }
+    streamRef.current = null;
+    setDisplayDetections([]);
+    setCameraReady(false);
+    setCameraError("Веб-камера отключена.");
   }
 
   async function captureBrowserFrame(): Promise<Blob | null> {
@@ -321,14 +342,21 @@ export function OverviewPage({
       if (blob && trackingActiveRef.current) {
         if (socket) {
           try {
-            onRealtimeDetection(await socket.sendFrame(blob));
+            const result = await socket.sendFrame(blob);
+            if (trackingActiveRef.current) {
+              onRealtimeDetection(result);
+            }
           } catch {
             socket.close();
             trackingSocketRef.current = null;
-            await onDetectWebcam(blob, false);
+            if (trackingActiveRef.current) {
+              await onDetectWebcam(blob, false);
+            }
           }
         } else {
-          await onDetectWebcam(blob, false);
+          if (trackingActiveRef.current) {
+            await onDetectWebcam(blob, false);
+          }
         }
       }
     } finally {
