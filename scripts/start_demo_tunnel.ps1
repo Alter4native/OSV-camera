@@ -63,10 +63,15 @@ for ($i = 0; $i -lt 40; $i++) {
         $log += Get-Content $outFile -Raw
     }
 
-    $match = [regex]::Match($log, "https://[a-zA-Z0-9-]+\.trycloudflare\.com")
+    $match = [regex]::Match($log, "https://(?!api\.)[a-zA-Z0-9-]+\.trycloudflare\.com")
     if ($match.Success) {
-        $tunnelUrl = $match.Value
-        break
+        try {
+            Invoke-WebRequest -UseBasicParsing "$($match.Value)/api/health" -TimeoutSec 10 | Out-Null
+            $tunnelUrl = $match.Value
+            break
+        } catch {
+            Write-Step "Tunnel candidate is not reachable yet: $($match.Value)"
+        }
     }
 
     if ($process.HasExited) {
