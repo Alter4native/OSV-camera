@@ -311,7 +311,7 @@ export function OverviewPage({
 
   async function runTrackingFrame() {
     const socket = trackingSocketRef.current;
-    if (!trackingActiveRef.current || trackingInFlightRef.current || !socket) {
+    if (!trackingActiveRef.current || trackingInFlightRef.current) {
       return;
     }
 
@@ -319,7 +319,17 @@ export function OverviewPage({
     try {
       const blob = await captureBrowserFrame();
       if (blob && trackingActiveRef.current) {
-        onRealtimeDetection(await socket.sendFrame(blob));
+        if (socket) {
+          try {
+            onRealtimeDetection(await socket.sendFrame(blob));
+          } catch {
+            socket.close();
+            trackingSocketRef.current = null;
+            await onDetectWebcam(blob, false);
+          }
+        } else {
+          await onDetectWebcam(blob, false);
+        }
       }
     } finally {
       trackingInFlightRef.current = false;
@@ -342,9 +352,9 @@ export function OverviewPage({
       trackingSocketRef.current = socket;
       await socket.ready();
     } catch (error) {
-      trackingActiveRef.current = false;
-      setCameraError(error instanceof Error ? error.message : "Не удалось открыть realtime-соединение AI");
-      return;
+      trackingSocketRef.current?.close();
+      trackingSocketRef.current = null;
+      setCameraError(null);
     }
     void runTrackingFrame();
   }
