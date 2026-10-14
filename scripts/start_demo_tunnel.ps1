@@ -44,9 +44,15 @@ $errFile = "C:\tmp\osv-pc-cloudflared.err"
 Remove-Item $outFile, $errFile -ErrorAction SilentlyContinue
 
 Write-Step "Starting Cloudflare Tunnel..."
+$existingProcesses = Get-Process cloudflared -ErrorAction SilentlyContinue
+if ($existingProcesses) {
+    Write-Step "Stopping existing cloudflared processes..."
+    $existingProcesses | Stop-Process -Force
+}
+
 $process = Start-Process `
     -FilePath $CloudflaredPath `
-    -ArgumentList "tunnel --url $OriginUrl" `
+    -ArgumentList "tunnel --protocol http2 --url $OriginUrl" `
     -RedirectStandardOutput $outFile `
     -RedirectStandardError $errFile `
     -WindowStyle Hidden `
