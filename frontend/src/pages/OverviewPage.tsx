@@ -32,6 +32,7 @@ type OverviewPageProps = {
   loading: boolean;
   onDetectWebcam: (frame: Blob, refreshDashboard?: boolean) => Promise<void>;
   onRealtimeDetection: (detection: WebcamDetection) => void;
+  onClearDetection: () => void;
 };
 
 function readStatus(payload: unknown): string {
@@ -81,6 +82,7 @@ export function OverviewPage({
   loading,
   onDetectWebcam,
   onRealtimeDetection,
+  onClearDetection,
 }: OverviewPageProps) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -277,6 +279,7 @@ export function OverviewPage({
       videoRef.current.srcObject = null;
     }
     setDisplayDetections([]);
+    onClearDetection();
     setCameraReady(false);
     setCameraError(null);
   }
@@ -295,6 +298,7 @@ export function OverviewPage({
     }
     streamRef.current = null;
     setDisplayDetections([]);
+    onClearDetection();
     setCameraReady(false);
     setCameraError("Веб-камера отключена.");
   }
