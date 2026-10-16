@@ -108,6 +108,11 @@ export function OverviewPage({
   const activeModel = models.find((model) => model.active) ?? models[0] ?? null;
   const peopleCountEvent = events.find((event) => event.event_type === "people_count");
   const peopleNow = Number(peopleCountEvent?.metadata.people_count ?? peopleCountEvent?.metadata.count ?? 0);
+  const selectedCamera = cameraDevices.find((device) => device.deviceId === selectedDeviceId);
+  const displayedCameraState = cameraReady ? "online" : primaryCamera?.state ?? "stopped";
+  const displayedCameraName = cameraReady
+    ? selectedCamera?.label || "Веб-камера браузера"
+    : primaryCamera?.name ?? "Источник не настроен";
   const frame = detection?.frame;
   const [displayDetections, setDisplayDetections] = useState<WebcamDetection["detections"]>([]);
 
@@ -453,9 +458,9 @@ export function OverviewPage({
       <section className="status-grid" aria-label="Статус платформы">
         <MetricTile
           icon={Camera}
-          label="Камера"
-          value={primaryCamera ? stateLabel(primaryCamera.state) : "Нет камеры"}
-          detail={primaryCamera?.name ?? "Источник не настроен"}
+          label={cameraReady ? "Веб-камера" : "Камера"}
+          value={stateLabel(displayedCameraState)}
+          detail={displayedCameraName}
         />
         <MetricTile icon={Crosshair} label="Последний детект" value={String(detection?.person_count ?? 0)} detail="людей в кадре" />
         <MetricTile
