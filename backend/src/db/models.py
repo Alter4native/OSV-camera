@@ -92,7 +92,7 @@ class CameraSettingsModel(TimestampMixin, Base):
         ForeignKey("cameras.camera_id", ondelete="CASCADE"),
         primary_key=True,
     )
-    person_confidence_threshold: Mapped[float] = mapped_column(Float, nullable=False, default=0.5)
+    person_confidence_threshold: Mapped[float] = mapped_column(Float, nullable=False, default=0.65)
     face_recognition_threshold: Mapped[float] = mapped_column(Float, nullable=False, default=0.65)
     event_cooldown_seconds: Mapped[int] = mapped_column(Integer, nullable=False, default=60)
     metadata_json: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False, default=dict)

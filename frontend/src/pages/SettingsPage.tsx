@@ -49,7 +49,7 @@ export function SettingsPage({
   const [draft, setDraft] = useState<SettingsRecord>(
     settings ?? {
       processing_fps: 5,
-      person_confidence_threshold: 0.5,
+      person_confidence_threshold: 0.65,
       face_recognition_threshold: 0.65,
       event_cooldown_seconds: 60,
       retention_days: 30,

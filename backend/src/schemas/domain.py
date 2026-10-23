@@ -203,7 +203,7 @@ class QualityAnalysisRead(BaseModel):
 
 class SettingsRead(BaseModel):
     processing_fps: int = 5
-    person_confidence_threshold: float = 0.5
+    person_confidence_threshold: float = 0.65
     face_recognition_threshold: float = 0.65
     event_cooldown_seconds: int = 60
     retention_days: int = 30

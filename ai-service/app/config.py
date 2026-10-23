@@ -21,7 +21,7 @@ class Settings(BaseSettings):
     camera_open_timeout_ms: int = Field(default=5000, alias="CAMERA_OPEN_TIMEOUT_MS")
     camera_read_timeout_ms: int = Field(default=5000, alias="CAMERA_READ_TIMEOUT_MS")
 
-    person_confidence_threshold: float = Field(default=0.5, alias="PERSON_CONFIDENCE_THRESHOLD")
+    person_confidence_threshold: float = Field(default=0.65, alias="PERSON_CONFIDENCE_THRESHOLD")
     face_recognition_threshold: float = Field(default=0.65, alias="FACE_RECOGNITION_THRESHOLD")
     face_recognition_runtime: str = Field(default="simple", alias="FACE_RECOGNITION_RUNTIME")
     face_embedding_dim: int = Field(default=32, alias="FACE_EMBEDDING_DIM")
