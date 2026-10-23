@@ -69,7 +69,11 @@ async function apiFetch<T>(path: string, options: RequestOptions = {}): Promise<
 }
 
 async function aiFetch<T>(path: string, options: RequestInit = {}): Promise<T> {
-  const response = await fetch(`${AI_BASE_URL}${path}`, options);
+  const headers = new Headers(options.headers);
+  if (options.body && typeof options.body === "string") {
+    headers.set("Content-Type", "application/json");
+  }
+  const response = await fetch(`${AI_BASE_URL}${path}`, { ...options, headers });
   return parseResponse<T>(response);
 }
 
@@ -277,5 +281,61 @@ export class WebcamDetectionSocket {
 
   close(): void {
     this.socket.close();
+  }
+}
+
+export class WebcamWebRtc {
+  private readonly peer: RTCPeerConnection;
+  private readonly detections: (detection: WebcamDetection) => void;
+  private readonly channel: RTCDataChannel;
+
+  constructor(detections: (detection: WebcamDetection) => void) {
+    this.detections = detections;
+    this.peer = new RTCPeerConnection();
+    this.channel = this.peer.createDataChannel("detections");
+    this.channel.addEventListener("message", (event) => {
+      try {
+        this.detections(JSON.parse(String(event.data)) as WebcamDetection);
+      } catch {
+        // Ignore malformed data channel messages and keep the video stream alive.
+      }
+    });
+  }
+
+  async connect(stream: MediaStream): Promise<void> {
+    stream.getTracks().forEach((track) => this.peer.addTrack(track, stream));
+    const offer = await this.peer.createOffer();
+    await this.peer.setLocalDescription(offer);
+    await this.waitForIceGathering();
+
+    const answer = await aiFetch<RTCSessionDescriptionInit>("/webrtc/offer", {
+      method: "POST",
+      body: JSON.stringify({
+        sdp: this.peer.localDescription?.sdp,
+        type: this.peer.localDescription?.type,
+      }),
+    });
+    await this.peer.setRemoteDescription(answer);
+  }
+
+  close(): void {
+    this.channel.close();
+    this.peer.close();
+  }
+
+  private waitForIceGathering(): Promise<void> {
+    if (this.peer.iceGatheringState === "complete") {
+      return Promise.resolve();
+    }
+
+    return new Promise((resolve) => {
+      const handleStateChange = () => {
+        if (this.peer.iceGatheringState === "complete") {
+          this.peer.removeEventListener("icegatheringstatechange", handleStateChange);
+          resolve();
+        }
+      };
+      this.peer.addEventListener("icegatheringstatechange", handleStateChange);
+    });
   }
 }

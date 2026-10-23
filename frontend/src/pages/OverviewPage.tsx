@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Activity, Camera, Crosshair, Gauge, Play, Server, Video } from "lucide-react";
 
-import { WebcamDetectionSocket } from "../api/client";
+import { WebcamDetectionSocket, WebcamWebRtc } from "../api/client";
 import { EmptyState } from "../components/EmptyState";
 import { MetricTile } from "../components/MetricTile";
 import { StatusBadge } from "../components/StatusBadge";
@@ -91,6 +91,7 @@ export function OverviewPage({
   const trackingActiveRef = useRef(false);
   const trackingInFlightRef = useRef(false);
   const trackingSocketRef = useRef<WebcamDetectionSocket | null>(null);
+  const webrtcRef = useRef<WebcamWebRtc | null>(null);
   const detectionHistoryRef = useRef<{
     previous: WebcamDetection["detections"] | null;
     current: WebcamDetection["detections"] | null;
@@ -200,6 +201,8 @@ export function OverviewPage({
     return () => {
       navigator.mediaDevices?.removeEventListener?.("devicechange", loadCameraDevices);
       trackingActiveRef.current = false;
+      webrtcRef.current?.close();
+      webrtcRef.current = null;
       trackingSocketRef.current?.close();
       trackingSocketRef.current = null;
       if (trackingTimeoutRef.current !== null) {
@@ -267,6 +270,8 @@ export function OverviewPage({
 
   function stopBrowserCamera() {
     trackingActiveRef.current = false;
+    webrtcRef.current?.close();
+    webrtcRef.current = null;
     trackingSocketRef.current?.close();
     trackingSocketRef.current = null;
     if (trackingTimeoutRef.current !== null) {
@@ -291,6 +296,8 @@ export function OverviewPage({
 
   function handleBrowserCameraEnded() {
     trackingActiveRef.current = false;
+    webrtcRef.current?.close();
+    webrtcRef.current = null;
     trackingSocketRef.current?.close();
     trackingSocketRef.current = null;
     if (trackingTimeoutRef.current !== null) {
@@ -341,7 +348,7 @@ export function OverviewPage({
 
   async function runTrackingFrame() {
     const socket = trackingSocketRef.current;
-    if (!trackingActiveRef.current || trackingInFlightRef.current) {
+    if (!trackingActiveRef.current || trackingInFlightRef.current || webrtcRef.current) {
       return;
     }
 
@@ -384,6 +391,20 @@ export function OverviewPage({
 
     trackingActiveRef.current = true;
     await onDetectWebcam(blob);
+
+    const stream = streamRef.current;
+    if (stream) {
+      try {
+        const webrtc = new WebcamWebRtc(onRealtimeDetection);
+        webrtcRef.current = webrtc;
+        await webrtc.connect(stream);
+        return;
+      } catch {
+        webrtcRef.current?.close();
+        webrtcRef.current = null;
+      }
+    }
+
     try {
       const socket = new WebcamDetectionSocket();
       trackingSocketRef.current = socket;

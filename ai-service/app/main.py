@@ -1,4 +1,6 @@
+import asyncio
 import base64
+import json
 import time
 
 from datetime import datetime, timezone
@@ -73,6 +75,7 @@ app = FastAPI(
     docs_url="/ai/docs",
     openapi_url="/ai/openapi.json",
 )
+webrtc_peers: set[object] = set()
 
 
 def health_payload() -> dict[str, object]:
@@ -182,6 +185,61 @@ async def webcam_stream(websocket: WebSocket) -> None:
         return
     except Exception as exc:
         await websocket.send_json({"error": str(exc)})
+
+
+@app.post("/ai/webrtc/offer", tags=["detector"])
+async def webrtc_offer(payload: dict[str, object]) -> dict[str, object]:
+    try:
+        from aiortc import RTCPeerConnection, RTCSessionDescription
+    except ImportError as exc:
+        raise HTTPException(status_code=503, detail="aiortc is not installed") from exc
+
+    offer_sdp = payload.get("sdp")
+    offer_type = payload.get("type")
+    if not isinstance(offer_sdp, str) or not isinstance(offer_type, str):
+        raise HTTPException(status_code=400, detail="WebRTC offer must contain sdp and type")
+
+    peer = RTCPeerConnection()
+    webrtc_peers.add(peer)
+    data_channel: object | None = None
+
+    @peer.on("datachannel")
+    def on_datachannel(channel: object) -> None:
+        nonlocal data_channel
+        data_channel = channel
+
+    @peer.on("track")
+    def on_track(track: object) -> None:
+        if getattr(track, "kind", None) != "video":
+            return
+        asyncio.create_task(process_webrtc_track(track, lambda: data_channel))
+
+    @peer.on("connectionstatechange")
+    async def on_connectionstatechange() -> None:
+        if peer.connectionState in {"failed", "closed", "disconnected"}:
+            webrtc_peers.discard(peer)
+            await peer.close()
+
+    await peer.setRemoteDescription(RTCSessionDescription(sdp=offer_sdp, type=offer_type))
+    answer = await peer.createAnswer()
+    await peer.setLocalDescription(answer)
+    return {
+        "sdp": peer.localDescription.sdp,
+        "type": peer.localDescription.type,
+    }
+
+
+async def process_webrtc_track(track: object, get_data_channel: object) -> None:
+    while True:
+        try:
+            video_frame = await track.recv()
+            image = video_frame.to_ndarray(format="bgr24")
+            result = await asyncio.to_thread(process_browser_frame, image)
+            channel = get_data_channel()
+            if channel is not None and getattr(channel, "readyState", None) == "open":
+                channel.send(json.dumps(result))
+        except Exception:
+            return
 
 
 def process_browser_frame(image: object) -> dict[str, object]:
