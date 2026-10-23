@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Activity, Camera, Crosshair, Gauge, Play, Server, Video } from "lucide-react";
 
-import { WebcamDetectionSocket, WebcamWebRtc } from "../api/client";
+import { WebcamDetectionSocket } from "../api/client";
 import { EmptyState } from "../components/EmptyState";
 import { MetricTile } from "../components/MetricTile";
 import { StatusBadge } from "../components/StatusBadge";
@@ -18,7 +18,6 @@ import { eventTypeLabel, formatDateTime, formatPercent, stateLabel } from "../ut
 const TRACKING_INTERVAL_MS = 0;
 const MAX_DETECTION_WIDTH = 960;
 const JPEG_QUALITY = 0.68;
-const PREDICTION_WINDOW_MS = 280;
 
 type OverviewPageProps = {
   cameras: CameraRecord[];
@@ -59,17 +58,6 @@ function classLabel(className: string): string {
   return className;
 }
 
-function detectionCenter(item: WebcamDetection["detections"][number]) {
-  return {
-    x: (item.bbox.x1 + item.bbox.x2) / 2,
-    y: (item.bbox.y1 + item.bbox.y2) / 2,
-  };
-}
-
-function trackId(item: WebcamDetection["detections"][number]): number | null {
-  return "track_id" in item && typeof item.track_id === "number" ? item.track_id : null;
-}
-
 export function OverviewPage({
   cameras,
   events,
@@ -91,14 +79,6 @@ export function OverviewPage({
   const trackingActiveRef = useRef(false);
   const trackingInFlightRef = useRef(false);
   const trackingSocketRef = useRef<WebcamDetectionSocket | null>(null);
-  const webrtcRef = useRef<WebcamWebRtc | null>(null);
-  const detectionHistoryRef = useRef<{
-    previous: WebcamDetection["detections"] | null;
-    current: WebcamDetection["detections"] | null;
-    previousReceivedAt: number;
-    receivedAt: number;
-  }>({ previous: null, current: null, previousReceivedAt: 0, receivedAt: 0 });
-  const predictionFrameRef = useRef<number | null>(null);
   const [cameraReady, setCameraReady] = useState(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [cameraDevices, setCameraDevices] = useState<MediaDeviceInfo[]>([]);
@@ -121,78 +101,7 @@ export function OverviewPage({
     if (!detection) {
       return;
     }
-
-    const history = detectionHistoryRef.current;
-    history.previousReceivedAt = history.receivedAt;
-    history.previous = history.current;
-    history.current = detection.tracks ?? detection.detections;
-    history.receivedAt = performance.now();
     setDisplayDetections(detection.tracks ?? detection.detections);
-
-    if (predictionFrameRef.current !== null) {
-      cancelAnimationFrame(predictionFrameRef.current);
-    }
-
-    const animatePrediction = (now: number) => {
-      const current = history.current;
-      const previous = history.previous;
-      if (!current || !previous || current.length !== previous.length) {
-        return;
-      }
-
-      const elapsed = Math.min(now - history.receivedAt, PREDICTION_WINDOW_MS);
-      const responseGap = Math.max(100, history.receivedAt - history.previousReceivedAt);
-      const movementFactor = Math.min(0.85, elapsed / responseGap);
-      setDisplayDetections(
-        current.map((item, index) => {
-          const currentCenter = detectionCenter(item);
-          const currentTrackId = trackId(item);
-          const previousItem =
-            (currentTrackId === null
-              ? previous
-                  .filter((candidate) => candidate.class_name === item.class_name)
-                  .sort((left, right) => {
-                    const leftCenter = detectionCenter(left);
-                    const rightCenter = detectionCenter(right);
-                    const leftDistance =
-                      (leftCenter.x - currentCenter.x) ** 2 + (leftCenter.y - currentCenter.y) ** 2;
-                    const rightDistance =
-                      (rightCenter.x - currentCenter.x) ** 2 + (rightCenter.y - currentCenter.y) ** 2;
-                    return leftDistance - rightDistance;
-                  })[0]
-              : previous.find((candidate) => trackId(candidate) === currentTrackId)) ?? null;
-          if (!previousItem || previousItem.class_name !== item.class_name) {
-            return item;
-          }
-
-          const delta = {
-            x1: item.bbox.x1 - previousItem.bbox.x1,
-            y1: item.bbox.y1 - previousItem.bbox.y1,
-            x2: item.bbox.x2 - previousItem.bbox.x2,
-            y2: item.bbox.y2 - previousItem.bbox.y2,
-          };
-
-          return {
-            ...item,
-            bbox: {
-              ...item.bbox,
-              x1: item.bbox.x1 + delta.x1 * movementFactor,
-              y1: item.bbox.y1 + delta.y1 * movementFactor,
-              x2: item.bbox.x2 + delta.x2 * movementFactor,
-              y2: item.bbox.y2 + delta.y2 * movementFactor,
-              width: item.bbox.width + (delta.x2 - delta.x1) * movementFactor,
-              height: item.bbox.height + (delta.y2 - delta.y1) * movementFactor,
-            },
-          };
-        }),
-      );
-
-      if (elapsed < PREDICTION_WINDOW_MS) {
-        predictionFrameRef.current = requestAnimationFrame(animatePrediction);
-      }
-    };
-
-    predictionFrameRef.current = requestAnimationFrame(animatePrediction);
   }, [detection]);
 
   useEffect(() => {
@@ -201,15 +110,10 @@ export function OverviewPage({
     return () => {
       navigator.mediaDevices?.removeEventListener?.("devicechange", loadCameraDevices);
       trackingActiveRef.current = false;
-      webrtcRef.current?.close();
-      webrtcRef.current = null;
       trackingSocketRef.current?.close();
       trackingSocketRef.current = null;
       if (trackingTimeoutRef.current !== null) {
         window.clearTimeout(trackingTimeoutRef.current);
-      }
-      if (predictionFrameRef.current !== null) {
-        cancelAnimationFrame(predictionFrameRef.current);
       }
       streamRef.current?.getTracks().forEach((track) => track.stop());
     };
@@ -239,7 +143,6 @@ export function OverviewPage({
         trackingTimeoutRef.current = null;
       }
       streamRef.current?.getTracks().forEach((track) => track.stop());
-      detectionHistoryRef.current = { previous: null, current: null, previousReceivedAt: 0, receivedAt: 0 };
       setDisplayDetections([]);
       const video: MediaTrackConstraints = selectedDeviceId
         ? {
@@ -270,17 +173,11 @@ export function OverviewPage({
 
   function stopBrowserCamera() {
     trackingActiveRef.current = false;
-    webrtcRef.current?.close();
-    webrtcRef.current = null;
     trackingSocketRef.current?.close();
     trackingSocketRef.current = null;
     if (trackingTimeoutRef.current !== null) {
       window.clearTimeout(trackingTimeoutRef.current);
       trackingTimeoutRef.current = null;
-    }
-    if (predictionFrameRef.current !== null) {
-      cancelAnimationFrame(predictionFrameRef.current);
-      predictionFrameRef.current = null;
     }
     streamRef.current?.getTracks().forEach((track) => track.stop());
     streamRef.current = null;
@@ -296,17 +193,11 @@ export function OverviewPage({
 
   function handleBrowserCameraEnded() {
     trackingActiveRef.current = false;
-    webrtcRef.current?.close();
-    webrtcRef.current = null;
     trackingSocketRef.current?.close();
     trackingSocketRef.current = null;
     if (trackingTimeoutRef.current !== null) {
       window.clearTimeout(trackingTimeoutRef.current);
       trackingTimeoutRef.current = null;
-    }
-    if (predictionFrameRef.current !== null) {
-      cancelAnimationFrame(predictionFrameRef.current);
-      predictionFrameRef.current = null;
     }
     streamRef.current = null;
     setDisplayDetections([]);
@@ -348,7 +239,7 @@ export function OverviewPage({
 
   async function runTrackingFrame() {
     const socket = trackingSocketRef.current;
-    if (!trackingActiveRef.current || trackingInFlightRef.current || webrtcRef.current) {
+    if (!trackingActiveRef.current || trackingInFlightRef.current) {
       return;
     }
 
@@ -391,19 +282,6 @@ export function OverviewPage({
 
     trackingActiveRef.current = true;
     await onDetectWebcam(blob);
-
-    const stream = streamRef.current;
-    if (stream) {
-      try {
-        const webrtc = new WebcamWebRtc(onRealtimeDetection);
-        webrtcRef.current = webrtc;
-        await webrtc.connect(stream);
-        return;
-      } catch {
-        webrtcRef.current?.close();
-        webrtcRef.current = null;
-      }
-    }
 
     try {
       const socket = new WebcamDetectionSocket();

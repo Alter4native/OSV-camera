@@ -611,6 +611,7 @@ button:focus-visible {
   min-height: 32px;
   border-color: #73d4a8;
   box-shadow: 0 0 0 1px rgba(115, 212, 168, 0.25);
+  transition: left 70ms linear, top 70ms linear, width 70ms linear, height 70ms linear;
 }
 
 .frame-size {
