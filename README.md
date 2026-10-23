@@ -120,7 +120,7 @@ Do not copy an old `trycloudflare.com` address manually after restarting the tun
 
 The same values are documented in `frontend/.env.vercel.example`.
 
-Quick demo tunnel:
+Quick demo tunnel (temporary URL):
 
 ```powershell
 .\scripts\start_demo_tunnel.ps1 -Push
@@ -129,6 +129,18 @@ Quick demo tunnel:
 This starts a temporary Cloudflare Tunnel for local Docker nginx on `http://127.0.0.1:8081`,
 updates `frontend/vercel.json`, commits and pushes the new tunnel URL so Vercel can redeploy.
 Keep the `cloudflared` process running during the demo.
+
+Stable Docker tunnel:
+
+1. Create a Cloudflare Named Tunnel and a public hostname pointing to `http://nginx:80`.
+2. Copy its token to `infra/.env` as `CLOUDFLARE_TUNNEL_TOKEN`.
+3. Start the full stack with the Docker tunnel profile:
+
+```powershell
+docker compose --env-file .\infra\.env -f .\infra\docker-compose.yml --profile tunnel up -d --build
+```
+
+The `cloudflared` container uses `restart: unless-stopped`, so no separate PowerShell tunnel process is required. Set the permanent hostname in `frontend/vercel.json` instead of a `trycloudflare.com` URL.
 
 Dashboard capabilities:
 
