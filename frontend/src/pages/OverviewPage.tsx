@@ -443,8 +443,10 @@ export function OverviewPage({
                     height: `${(item.bbox.height / height) * 100}%`,
                   }}
                 >
-                  <span>
-                    #{item.track_id ?? index + 1} {classLabel(item.class_name)} {formatPercent(item.confidence)}
+                  <span className="detection-box__label">
+                    <span className="detection-box__index">#{String(item.track_id ?? index + 1).padStart(2, "0")}</span>
+                    <span className="detection-box__class">{classLabel(item.class_name)}</span>
+                    <span className="detection-box__confidence">{formatPercent(item.confidence)}</span>
                   </span>
                 </div>
               );

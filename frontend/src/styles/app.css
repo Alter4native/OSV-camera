@@ -842,9 +842,25 @@ button:focus-visible {
   z-index: 3;
   min-width: 32px;
   min-height: 32px;
-  border-color: #73d4a8;
-  box-shadow: 0 0 0 1px rgba(115, 212, 168, 0.25);
+  border: 0;
   transition: left 110ms ease-out, top 110ms ease-out, width 110ms ease-out, height 110ms ease-out;
+}
+
+.detection-box::before {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(#80e8b2, #80e8b2) left top / 16px 2px no-repeat,
+    linear-gradient(#80e8b2, #80e8b2) left top / 2px 16px no-repeat,
+    linear-gradient(#80e8b2, #80e8b2) right top / 16px 2px no-repeat,
+    linear-gradient(#80e8b2, #80e8b2) right top / 2px 16px no-repeat,
+    linear-gradient(#80e8b2, #80e8b2) left bottom / 16px 2px no-repeat,
+    linear-gradient(#80e8b2, #80e8b2) left bottom / 2px 16px no-repeat,
+    linear-gradient(#80e8b2, #80e8b2) right bottom / 16px 2px no-repeat,
+    linear-gradient(#80e8b2, #80e8b2) right bottom / 2px 16px no-repeat;
+  content: "";
+  filter: drop-shadow(0 0 4px rgba(128, 232, 178, 0.7));
+  pointer-events: none;
 }
 
 .frame-size {
@@ -884,21 +900,45 @@ button:focus-visible {
 
 .person-box {
   position: absolute;
-  border: 2px solid #73d4a8;
-  border-radius: 4px;
+  border: 0;
 }
 
-.person-box span {
+.person-box > span {
   position: absolute;
-  top: -24px;
-  left: -2px;
-  padding: 3px 7px;
-  color: #082417;
-  background: #73d4a8;
-  border-radius: 4px 4px 0 0;
-  font-size: 12px;
-  font-weight: 800;
+  top: -13px;
+  left: 7px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 24px;
+  padding: 3px 8px;
+  color: #edf9f2;
+  background: rgba(15, 27, 32, 0.78);
+  border: 1px solid rgba(128, 232, 178, 0.42);
+  border-left: 2px solid #80e8b2;
+  border-radius: 5px;
+  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.2);
+  backdrop-filter: blur(8px);
+  font-size: 11px;
+  font-weight: 650;
+  line-height: 1;
   white-space: nowrap;
+}
+
+.detection-box__index {
+  color: rgba(237, 249, 242, 0.72);
+  font-variant-numeric: tabular-nums;
+}
+
+.detection-box__class {
+  text-transform: uppercase;
+  letter-spacing: 0.045em;
+}
+
+.detection-box__confidence {
+  color: #9af0bf;
+  font-variant-numeric: tabular-nums;
+  font-weight: 800;
 }
 
 .person-box-a {
