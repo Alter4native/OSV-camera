@@ -383,31 +383,7 @@ export function OverviewPage({
 
       {cameraError ? <div className="notice-banner">{cameraError}</div> : null}
 
-      <section className="status-grid" aria-label="Статус платформы">
-        <MetricTile
-          icon={Camera}
-          label={cameraReady ? "Веб-камера" : "Камера"}
-          value={stateLabel(displayedCameraState)}
-          detail={displayedCameraName}
-        />
-        <MetricTile icon={Crosshair} label="Последний детект" value={String(detection?.person_count ?? 0)} detail="людей в кадре" />
-        <MetricTile
-          icon={Gauge}
-          label="AI · FPS"
-          value={displayedTelemetry ? displayedTelemetry.processing_fps.toFixed(1) : "—"}
-          detail={`цель ${settings?.processing_fps ?? primaryCamera?.processing_fps ?? 0} кадр/с`}
-        />
-        <MetricTile icon={Activity} label="AI-сервис" value={readStatus(aiHealth)} detail={readDetectorRuntime(aiHealth)} />
-      </section>
-
-      <TelemetryPanel
-        telemetry={displayedTelemetry}
-        history={telemetryHistory}
-        visibleTracks={detection?.tracking?.visible_tracks ?? detection?.tracks?.length ?? detection?.person_count ?? 0}
-        cameraActive={cameraReady}
-      />
-
-      <section className="content-grid dashboard-grid">
+      <section className="content-grid dashboard-grid dashboard-grid--camera">
         <article className="panel live-panel">
           <div className="panel-header">
             <div>
@@ -484,6 +460,30 @@ export function OverviewPage({
           </div>
         </article>
       </section>
+
+      <section className="status-grid" aria-label="Статус платформы">
+        <MetricTile
+          icon={Camera}
+          label={cameraReady ? "Веб-камера" : "Камера"}
+          value={stateLabel(displayedCameraState)}
+          detail={displayedCameraName}
+        />
+        <MetricTile icon={Crosshair} label="Последний детект" value={String(detection?.person_count ?? 0)} detail="людей в кадре" />
+        <MetricTile
+          icon={Gauge}
+          label="AI · FPS"
+          value={displayedTelemetry ? displayedTelemetry.processing_fps.toFixed(1) : "—"}
+          detail={`цель ${settings?.processing_fps ?? primaryCamera?.processing_fps ?? 0} кадр/с`}
+        />
+        <MetricTile icon={Activity} label="AI-сервис" value={readStatus(aiHealth)} detail={readDetectorRuntime(aiHealth)} />
+      </section>
+
+      <TelemetryPanel
+        telemetry={displayedTelemetry}
+        history={telemetryHistory}
+        visibleTracks={detection?.tracking?.visible_tracks ?? detection?.tracks?.length ?? detection?.person_count ?? 0}
+        cameraActive={cameraReady}
+      />
 
       <section className="content-grid content-grid--balanced">
         <article className="panel">

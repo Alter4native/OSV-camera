@@ -719,6 +719,10 @@ button:focus-visible {
   grid-template-columns: minmax(0, 1.85fr) minmax(280px, 0.8fr);
 }
 
+.dashboard-grid--camera {
+  grid-template-columns: minmax(0, 1fr);
+}
+
 .page-stack {
   display: grid;
   gap: 18px;
