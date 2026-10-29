@@ -1,6 +1,13 @@
+from collections import deque
 from collections.abc import Mapping, Sequence
+from math import ceil
 from pathlib import Path
+from statistics import mean
+from threading import Lock
+from time import perf_counter, monotonic
 from typing import Any
+
+import numpy as np
 
 from app.detection.base import ObjectDetector, is_allowed_person_detection
 from app.detection.schemas import BoundingBox, Detection, DetectorMetadata
@@ -8,7 +15,9 @@ from app.video.source import VideoFrame
 
 
 class YoloDetector(ObjectDetector):
-    default_pretrained_model = "yolov8n.pt"
+    default_pretrained_model = "yolo26n.pt"
+    inference_image_size = 640
+    telemetry_sample_limit = 60
 
     def __init__(
         self,
@@ -25,17 +34,51 @@ class YoloDetector(ObjectDetector):
         self.confidence_threshold = confidence_threshold
         self.allowed_class_names = tuple(allowed_class_names)
         self._model = model
+        self._telemetry_lock = Lock()
+        self._samples: deque[tuple[float, float, int, float, int, int]] = deque(
+            maxlen=self.telemetry_sample_limit,
+        )
+        self._frames_processed = 0
+        self._device = "waiting"
 
     def detect(self, frame: VideoFrame) -> Sequence[Detection]:
         model = self._get_model()
-        results = model.predict(frame.image, conf=self.confidence_threshold, verbose=False)
-
         detections: list[Detection] = []
-        for result in results:
-            class_names = self._class_names(result)
-            detections.extend(self._parse_result(frame, result, class_names))
+        started_at = perf_counter()
+        try:
+            class_ids = self._allowed_class_ids(model)
+            results = model.predict(
+                frame.image,
+                conf=self.confidence_threshold,
+                classes=class_ids,
+                imgsz=self.inference_image_size,
+                max_det=100,
+                quantize=16 if self._uses_cuda(model) else None,
+                verbose=False,
+            )
 
-        return detections
+            for result in results:
+                class_names = self._class_names(result)
+                detections.extend(self._parse_result(frame, result, class_names))
+            return detections
+        finally:
+            elapsed_ms = (perf_counter() - started_at) * 1000
+            self._record_sample(frame, elapsed_ms, detections)
+
+    def warmup(self) -> None:
+        """Load model weights and initialize inference before the first camera frame."""
+        model = self._get_model()
+        model.predict(
+            np.zeros((480, self.inference_image_size, 3), dtype=np.uint8),
+            conf=self.confidence_threshold,
+            classes=self._allowed_class_ids(model),
+            imgsz=self.inference_image_size,
+            max_det=100,
+            quantize=16 if self._uses_cuda(model) else None,
+            verbose=False,
+        )
+        with self._telemetry_lock:
+            self._device = self._device_name(model)
 
     def metadata(self) -> DetectorMetadata:
         return DetectorMetadata(
@@ -45,6 +88,75 @@ class YoloDetector(ObjectDetector):
             confidence_threshold=self.confidence_threshold,
             loaded=self._model is not None,
         )
+
+    def telemetry(self) -> dict[str, object]:
+        with self._telemetry_lock:
+            samples = list(self._samples)
+            frames_processed = self._frames_processed
+            device = self._device
+
+        inference_times = [sample[1] for sample in samples]
+        if len(samples) > 1:
+            elapsed = samples[-1][0] - samples[0][0]
+            processing_fps = (len(samples) - 1) / elapsed if elapsed > 0 else 0.0
+        else:
+            processing_fps = 0.0
+
+        sorted_times = sorted(inference_times)
+        p95_index = max(0, ceil(len(sorted_times) * 0.95) - 1)
+        last = samples[-1] if samples else None
+        average_confidence = last[3] if last else 0.0
+
+        return {
+            "model": Path(self.model_path).name or self.default_pretrained_model,
+            "device": device,
+            "loaded": self._model is not None,
+            "processing_fps": round(processing_fps, 1),
+            "inference_ms": round(last[1], 1) if last else None,
+            "average_inference_ms": round(mean(inference_times), 1) if inference_times else None,
+            "p95_inference_ms": round(sorted_times[p95_index], 1) if sorted_times else None,
+            "frames_processed": frames_processed,
+            "detections_last_frame": last[2] if last else 0,
+            "average_confidence": round(average_confidence, 3),
+            "frame_width": last[4] if last else 0,
+            "frame_height": last[5] if last else 0,
+        }
+
+    def _record_sample(self, frame: VideoFrame, elapsed_ms: float, detections: Sequence[Detection]) -> None:
+        average_confidence = mean(detection.confidence for detection in detections) if detections else 0.0
+        sample = (
+            monotonic(),
+            elapsed_ms,
+            len(detections),
+            average_confidence,
+            int(frame.width or 0),
+            int(frame.height or 0),
+        )
+        with self._telemetry_lock:
+            self._samples.append(sample)
+            self._frames_processed += 1
+            self._device = self._device_name(self._model)
+
+    def _device_name(self, model: Any | None) -> str:
+        if model is None:
+            return "waiting"
+        device = getattr(model, "device", None)
+        if device is None:
+            device = getattr(getattr(model, "model", None), "device", None)
+        value = str(device or "cpu").lower()
+        return "GPU" if "cuda" in value or "mps" in value else "CPU"
+
+    def _uses_cuda(self, model: Any) -> bool:
+        return self._device_name(model) == "GPU" and "cuda" in str(
+            getattr(model, "device", getattr(getattr(model, "model", None), "device", "")),
+        ).lower()
+
+    def _allowed_class_ids(self, model: Any) -> list[int] | None:
+        names = getattr(model, "names", None)
+        if isinstance(names, dict):
+            ids = [int(key) for key, name in names.items() if str(name) in self.allowed_class_names]
+            return ids or None
+        return None
 
     def _get_model(self) -> Any:
         if self._model is None:

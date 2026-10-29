@@ -52,10 +52,10 @@ def seed_model(session: Session) -> None:
         session.add(
             ModelVersionModel(
                 model_id=new_id(),
-                name="YOLO детектор людей",
-                version="mvp",
+                name="YOLO26n детектор людей",
+                version="8.4.0",
                 runtime="yolo",
-                path="/app/models/yolov8n.pt",
+                path="/app/models/yolo26n.pt",
                 active=True,
                 metadata_json={},
                 created_at=utc_now(),

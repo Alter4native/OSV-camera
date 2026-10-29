@@ -54,9 +54,9 @@ def test_ai_health() -> None:
     assert payload["camera"]["status"]["state"] == "stopped"
     assert payload["detector"] == {
         "runtime": "yolo",
-        "model_path": "yolov8n.pt",
+        "model_path": "yolo26n.pt",
         "scope": "person-only",
-        "confidence_threshold": 0.5,
+        "confidence_threshold": 0.65,
         "loaded": False,
     }
     assert payload["tracker"] == {

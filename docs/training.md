@@ -5,17 +5,17 @@
 MVP inference uses a YOLO-compatible model. The default local path is:
 
 ```text
-ai-service/models/yolov8n.pt
+ai-service/models/yolo26n.pt
 ```
 
 Inside Docker:
 
 ```text
-/app/models/yolov8n.pt
+/app/models/yolo26n.pt
 ```
 
 The detector is person-only. It filters YOLO outputs to `class_name == "person"` and applies `PERSON_CONFIDENCE_THRESHOLD`.
-If the configured local `.pt` file is missing, the adapter falls back to Ultralytics `yolov8n.pt`.
+The runtime uses the bundled YOLO26n checkpoint by default.
 
 ## Face recognition model note
 

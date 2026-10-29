@@ -2,6 +2,8 @@ import asyncio
 import base64
 import json
 import time
+from contextlib import asynccontextmanager
+from itertools import count
 
 from datetime import datetime, timezone
 
@@ -69,13 +71,23 @@ event_engine = EventEngine(
     )
 )
 
+@asynccontextmanager
+async def app_lifespan(_: FastAPI):
+    warmup = getattr(detector, "warmup", None)
+    if callable(warmup):
+        await asyncio.to_thread(warmup)
+    yield
+
+
 app = FastAPI(
     title=settings.app_name,
     version="0.1.0",
     docs_url="/ai/docs",
     openapi_url="/ai/openapi.json",
+    lifespan=app_lifespan,
 )
 webrtc_peers: set[object] = set()
+browser_frame_sequence = count(1)
 
 
 def health_payload() -> dict[str, object]:
@@ -92,10 +104,18 @@ def health_payload() -> dict[str, object]:
             "status": camera_manager.get_status(),
         },
         "detector": detector.metadata().as_dict(),
+        "telemetry": detector_telemetry(),
         "tracker": tracker.metadata().as_dict(),
         "recognition": face_recognizer.metadata().as_dict(),
         "events": event_engine.metadata().as_dict(),
     }
+
+
+def detector_telemetry() -> dict[str, object]:
+    telemetry_reader = getattr(detector, "telemetry", None)
+    if not callable(telemetry_reader):
+        return {}
+    return telemetry_reader()
 
 
 @app.get("/health", tags=["health"])
@@ -164,6 +184,7 @@ def webcam_detect_once(max_attempts: int = 10) -> dict[str, object]:
         "detections": [detection.as_dict() for detection in detections],
         "camera": camera_manager.get_status(),
         "detector": detector_payload,
+        "telemetry": detector_telemetry(),
     }
 
 
@@ -246,7 +267,7 @@ def process_browser_frame(image: object) -> dict[str, object]:
     height, width = image.shape[:2]
     frame = VideoFrame(
         camera_id="browser-webcam",
-        sequence=int(time.time() * 1000),
+        sequence=next(browser_frame_sequence),
         timestamp=datetime.now(timezone.utc),
         image=image,
         width=width,
@@ -284,6 +305,8 @@ def process_browser_frame(image: object) -> dict[str, object]:
             "state": "online",
         },
         "detector": detector_payload,
+        "tracking": browser_tracker.metadata().as_dict() | {"visible_tracks": len(tracked_objects)},
+        "telemetry": detector_telemetry(),
     }
 
 

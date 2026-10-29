@@ -33,9 +33,22 @@ class FakeModel:
     def __init__(self, results: list[FakeResult]) -> None:
         self.results = results
 
-    def predict(self, image: object, conf: float, verbose: bool) -> list[FakeResult]:
+    def predict(
+        self,
+        image: object,
+        conf: float,
+        classes: list[int] | None,
+        imgsz: int,
+        max_det: int,
+        quantize: int | None,
+        verbose: bool,
+    ) -> list[FakeResult]:
         assert image == "image"
         assert conf == 0.5
+        assert classes == [0]
+        assert imgsz == 640
+        assert max_det == 100
+        assert quantize is None
         assert verbose is False
         return self.results
 

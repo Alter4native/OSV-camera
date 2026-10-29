@@ -5,9 +5,11 @@ import { WebcamDetectionSocket } from "../api/client";
 import { EmptyState } from "../components/EmptyState";
 import { MetricTile } from "../components/MetricTile";
 import { StatusBadge } from "../components/StatusBadge";
+import { TelemetryPanel } from "../components/TelemetryPanel";
 import type {
   Camera as CameraRecord,
   EventRecord,
+  InferenceTelemetry,
   ModelVersion,
   Person,
   Settings,
@@ -51,6 +53,17 @@ function readDetectorRuntime(payload: unknown): string {
   return "AI";
 }
 
+function readInferenceTelemetry(payload: unknown): InferenceTelemetry | null {
+  if (!payload || typeof payload !== "object" || !("telemetry" in payload)) {
+    return null;
+  }
+  const telemetry = (payload as { telemetry: unknown }).telemetry;
+  if (!telemetry || typeof telemetry !== "object" || !("processing_fps" in telemetry)) {
+    return null;
+  }
+  return telemetry as InferenceTelemetry;
+}
+
 function classLabel(className: string): string {
   if (className === "person") {
     return "человек";
@@ -85,6 +98,7 @@ export function OverviewPage({
   const [selectedDeviceId, setSelectedDeviceId] = useState("");
   const [videoAspectRatio, setVideoAspectRatio] = useState("16 / 9");
   const [portraitCamera, setPortraitCamera] = useState(false);
+  const [telemetryHistory, setTelemetryHistory] = useState<InferenceTelemetry[]>([]);
   const primaryCamera = cameras[0] ?? null;
   const activeModel = models.find((model) => model.active) ?? models[0] ?? null;
   const peopleCountEvent = events.find((event) => event.event_type === "people_count");
@@ -95,13 +109,27 @@ export function OverviewPage({
     ? selectedCamera?.label || "Веб-камера браузера"
     : primaryCamera?.name ?? "Источник не настроен";
   const frame = detection?.frame;
-  const [displayDetections, setDisplayDetections] = useState<WebcamDetection["detections"]>([]);
+  const displayedTelemetry = detection?.telemetry ?? readInferenceTelemetry(aiHealth);
+  const [displayDetections, setDisplayDetections] = useState<
+    Array<WebcamDetection["detections"][number] & { track_id?: number; hits?: number }>
+  >([]);
 
   useEffect(() => {
     if (!detection) {
       return;
     }
     setDisplayDetections(detection.tracks ?? detection.detections);
+
+    const telemetry = detection.telemetry;
+    if (!telemetry || telemetry.frames_processed <= 0) {
+      return;
+    }
+    setTelemetryHistory((current) => {
+      if (current.at(-1)?.frames_processed === telemetry.frames_processed) {
+        return current;
+      }
+      return [...current, telemetry].slice(-36);
+    });
   }, [detection]);
 
   useEffect(() => {
@@ -144,6 +172,7 @@ export function OverviewPage({
       }
       streamRef.current?.getTracks().forEach((track) => track.stop());
       setDisplayDetections([]);
+      setTelemetryHistory([]);
       const video: MediaTrackConstraints = selectedDeviceId
         ? {
             deviceId: { exact: selectedDeviceId },
@@ -364,12 +393,19 @@ export function OverviewPage({
         <MetricTile icon={Crosshair} label="Последний детект" value={String(detection?.person_count ?? 0)} detail="людей в кадре" />
         <MetricTile
           icon={Gauge}
-          label="FPS обработки"
-          value={String(settings?.processing_fps ?? primaryCamera?.processing_fps ?? 0)}
-          detail="целевая частота анализа"
+          label="AI · FPS"
+          value={displayedTelemetry ? displayedTelemetry.processing_fps.toFixed(1) : "—"}
+          detail={`цель ${settings?.processing_fps ?? primaryCamera?.processing_fps ?? 0} кадр/с`}
         />
         <MetricTile icon={Activity} label="AI-сервис" value={readStatus(aiHealth)} detail={readDetectorRuntime(aiHealth)} />
       </section>
+
+      <TelemetryPanel
+        telemetry={displayedTelemetry}
+        history={telemetryHistory}
+        visibleTracks={detection?.tracking?.visible_tracks ?? detection?.tracks?.length ?? detection?.person_count ?? 0}
+        cameraActive={cameraReady}
+      />
 
       <section className="content-grid dashboard-grid">
         <article className="panel live-panel">
@@ -399,7 +435,7 @@ export function OverviewPage({
               return (
                 <div
                   className="person-box detection-box"
-                  key={`${item.frame_sequence}-${index}`}
+                  key={item.track_id != null ? `track-${item.track_id}` : `detection-${index}`}
                   style={{
                     left: `${(item.bbox.x1 / width) * 100}%`,
                     top: `${(item.bbox.y1 / height) * 100}%`,
@@ -408,7 +444,7 @@ export function OverviewPage({
                   }}
                 >
                   <span>
-                    #{index + 1} {classLabel(item.class_name)} {formatPercent(item.confidence)}
+                    #{item.track_id ?? index + 1} {classLabel(item.class_name)} {formatPercent(item.confidence)}
                   </span>
                 </div>
               );

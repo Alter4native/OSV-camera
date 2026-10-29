@@ -70,6 +70,21 @@ export type DetectionBox = {
   height: number;
 };
 
+export type InferenceTelemetry = {
+  model: string;
+  device: string;
+  loaded: boolean;
+  processing_fps: number;
+  inference_ms: number | null;
+  average_inference_ms: number | null;
+  p95_inference_ms: number | null;
+  frames_processed: number;
+  detections_last_frame: number;
+  average_confidence: number;
+  frame_width: number;
+  frame_height: number;
+};
+
 export type WebcamDetection = {
   camera_id: string;
   frame_sequence: number;
@@ -102,6 +117,15 @@ export type WebcamDetection = {
   }>;
   camera: Record<string, unknown>;
   detector: Record<string, unknown>;
+  tracking?: {
+    runtime: string;
+    active_tracks: number;
+    visible_tracks: number;
+    match_threshold: number;
+    track_ttl_frames: number;
+    new_track_threshold: number;
+  };
+  telemetry?: InferenceTelemetry;
 };
 
 export type Person = {

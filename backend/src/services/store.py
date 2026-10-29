@@ -58,10 +58,10 @@ class AppStore:
         model_id = str(uuid4())
         self.models[model_id] = ModelVersionRead(
             model_id=model_id,
-            name="YOLO детектор людей",
-            version="mvp",
+            name="YOLO26n детектор людей",
+            version="8.4.0",
             runtime="yolo",
-            path="/app/models/yolov8n.pt",
+            path="/app/models/yolo26n.pt",
             active=True,
             created_at=utc_now(),
         )

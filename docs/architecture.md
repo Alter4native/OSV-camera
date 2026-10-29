@@ -107,7 +107,7 @@ MVP:
 
 ## 4. Runtime defaults
 
-- Детектор: Ultralytics YOLO, baseline `yolov8n`/`yolo11n` class `person`.
+- Детектор: Ultralytics YOLO26n, pretrained COCO class `person`.
 - Tracker: ByteTrack.
 - Recognition: face detector + face embedding model; конкретная библиотека фиксируется на этапе 9 после проверки совместимости.
 - Inference runtime MVP: PyTorch или ONNX Runtime CPU.
@@ -404,7 +404,7 @@ Detection contract:
 - `confidence`
 
 Ограничения этапа:
-- если локальный `.pt` файл отсутствует, YOLO adapter использует pretrained `yolov8n.pt`;
+- используется локальный pretrained checkpoint `yolo26n.pt` из `ai-service/models`;
 - detector еще не подключен к постоянному camera processing loop;
 - generic object detection намеренно не реализован.
 
