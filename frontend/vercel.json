@@ -2,11 +2,11 @@
     "rewrites":  [
                      {
                          "source":  "/api/:path*",
-                         "destination":  "https://hire-competent-taking-precious.trycloudflare.com/api/:path*"
+                         "destination":  "https://examining-singh-titans-fax.trycloudflare.com/api/:path*"
                      },
                      {
                          "source":  "/ai/:path*",
-                         "destination":  "https://hire-competent-taking-precious.trycloudflare.com/ai/:path*"
+                         "destination":  "https://examining-singh-titans-fax.trycloudflare.com/ai/:path*"
                      },
                      {
                          "source":  "/(.*)",
