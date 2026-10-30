@@ -846,9 +846,12 @@ button:focus-visible {
   z-index: 3;
   min-width: 32px;
   min-height: 32px;
-  border: 1px solid rgba(133, 255, 194, 0.58);
+  border: 3px solid #39ff9a;
   border-radius: 7px;
-  box-shadow: 0 0 0 1px rgba(5, 20, 25, 0.48), 0 0 12px rgba(62, 222, 145, 0.2);
+  box-shadow:
+    0 0 0 2px rgba(5, 16, 22, 0.9),
+    0 0 18px rgba(57, 255, 154, 0.72),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.46);
   transition: left 110ms ease-out, top 110ms ease-out, width 110ms ease-out, height 110ms ease-out;
 }
 
