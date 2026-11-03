@@ -2,11 +2,11 @@
     "rewrites":  [
                      {
                          "source":  "/api/:path*",
-                         "destination":  "https://examining-singh-titans-fax.trycloudflare.com/api/:path*"
+                         "destination":  "https://bra-object-accountability-modelling.trycloudflare.com/api/:path*"
                      },
                      {
                          "source":  "/ai/:path*",
-                         "destination":  "https://examining-singh-titans-fax.trycloudflare.com/ai/:path*"
+                         "destination":  "https://bra-object-accountability-modelling.trycloudflare.com/ai/:path*"
                      },
                      {
                          "source":  "/(.*)",
