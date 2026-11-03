@@ -49,6 +49,8 @@ services:
       - ./.env.example
     ports:
       - "8000:8000"
+    volumes:
+      - ../storage/scans:/data/scans
     depends_on:
       postgres:
         condition: service_healthy

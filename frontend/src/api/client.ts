@@ -224,6 +224,38 @@ export function detectWebcamFrame(frame: Blob): Promise<WebcamDetection> {
   });
 }
 
+export function saveScanSample(
+  token: string,
+  sessionId: string,
+  frame: Blob,
+  detection: WebcamDetection,
+): Promise<{ session_id: string; sample_count: number; frame_file: string; captured_at: string }> {
+  const body = new FormData();
+  body.set("session_id", sessionId);
+  body.set(
+    "metadata",
+    JSON.stringify({
+      camera_id: detection.camera_id,
+      frame_sequence: detection.frame_sequence,
+      timestamp: detection.timestamp,
+      frame: detection.frame,
+      person_count: detection.person_count,
+      detections: detection.detections,
+      tracks: detection.tracks ?? [],
+      camera: detection.camera,
+      detector: detection.detector,
+      tracking: detection.tracking ?? null,
+      telemetry: detection.telemetry ?? null,
+    }),
+  );
+  body.set("frame", frame, `frame-${detection.frame_sequence}.jpg`);
+  return apiFetch<{ session_id: string; sample_count: number; frame_file: string; captured_at: string }>("/scans/samples", {
+    token,
+    method: "POST",
+    body,
+  });
+}
+
 export class WebcamDetectionSocket {
   private readonly socket: WebSocket;
   private readonly readyPromise: Promise<void>;

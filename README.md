@@ -150,6 +150,12 @@ Dashboard capabilities:
 - Event filters run client-side form state plus authorized API requests.
 - Snapshot view resolves through authorized backend metadata, not a public static file URL.
 
+Scan recordings:
+
+- When detection is started from the webcam dashboard, admin/operator scans save one JPEG sample per second at most, together with the matching people count, boxes/tracks and telemetry. The `ground_truth_count` CSV column is left blank for manual reference counts.
+- Files are stored on the host under `storage/scans/<session-id>/`: `measurements.csv` opens in Excel, `session.json` contains session metadata, and `frames/` contains the JPEGs referenced by each CSV row.
+- The backend endpoint requires an admin/operator login. Start or recreate Docker Compose after adding the storage mount; the saved files survive container restarts and are excluded from Git.
+
 Docker Compose:
 
 ```powershell

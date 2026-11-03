@@ -18,8 +18,19 @@ import type {
 import { eventTypeLabel, formatDateTime, formatPercent, stateLabel } from "../utils/format";
 
 const TRACKING_INTERVAL_MS = 0;
+const SCAN_SAVE_INTERVAL_MS = 1000;
 const MAX_DETECTION_WIDTH = 960;
 const JPEG_QUALITY = 0.68;
+
+function createScanSessionId(): string {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID();
+  }
+  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (character) => {
+    const value = Math.floor(Math.random() * 16);
+    return (character === "x" ? value : (value & 0x3) | 0x8).toString(16);
+  });
+}
 
 type OverviewPageProps = {
   cameras: CameraRecord[];
@@ -31,7 +42,8 @@ type OverviewPageProps = {
   vectorStatus: unknown;
   detection: WebcamDetection | null;
   loading: boolean;
-  onDetectWebcam: (frame: Blob, refreshDashboard?: boolean) => Promise<void>;
+  onDetectWebcam: (frame: Blob, refreshDashboard?: boolean) => Promise<WebcamDetection | null>;
+  onSaveScanSample: (sessionId: string, frame: Blob, detection: WebcamDetection) => Promise<number>;
   onRealtimeDetection: (detection: WebcamDetection) => void;
   onClearDetection: () => void;
 };
@@ -82,6 +94,7 @@ export function OverviewPage({
   detection,
   loading,
   onDetectWebcam,
+  onSaveScanSample,
   onRealtimeDetection,
   onClearDetection,
 }: OverviewPageProps) {
@@ -91,9 +104,15 @@ export function OverviewPage({
   const trackingTimeoutRef = useRef<number | null>(null);
   const trackingActiveRef = useRef(false);
   const trackingInFlightRef = useRef(false);
+  const trackingRunIdRef = useRef(0);
   const trackingSocketRef = useRef<WebcamDetectionSocket | null>(null);
+  const scanSessionIdRef = useRef<string | null>(null);
+  const lastScanSaveAtRef = useRef(Number.NEGATIVE_INFINITY);
   const [cameraReady, setCameraReady] = useState(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
+  const [scanSessionId, setScanSessionId] = useState<string | null>(null);
+  const [savedScanSamples, setSavedScanSamples] = useState(0);
+  const [scanSaveError, setScanSaveError] = useState<string | null>(null);
   const [cameraDevices, setCameraDevices] = useState<MediaDeviceInfo[]>([]);
   const [selectedDeviceId, setSelectedDeviceId] = useState("");
   const [videoAspectRatio, setVideoAspectRatio] = useState("16 / 9");
@@ -138,6 +157,8 @@ export function OverviewPage({
     return () => {
       navigator.mediaDevices?.removeEventListener?.("devicechange", loadCameraDevices);
       trackingActiveRef.current = false;
+      trackingRunIdRef.current += 1;
+      scanSessionIdRef.current = null;
       trackingSocketRef.current?.close();
       trackingSocketRef.current = null;
       if (trackingTimeoutRef.current !== null) {
@@ -166,6 +187,7 @@ export function OverviewPage({
     setCameraError(null);
     try {
       trackingActiveRef.current = false;
+      trackingRunIdRef.current += 1;
       if (trackingTimeoutRef.current !== null) {
         window.clearTimeout(trackingTimeoutRef.current);
         trackingTimeoutRef.current = null;
@@ -202,6 +224,8 @@ export function OverviewPage({
 
   function stopBrowserCamera() {
     trackingActiveRef.current = false;
+    trackingRunIdRef.current += 1;
+    scanSessionIdRef.current = null;
     trackingSocketRef.current?.close();
     trackingSocketRef.current = null;
     if (trackingTimeoutRef.current !== null) {
@@ -222,6 +246,8 @@ export function OverviewPage({
 
   function handleBrowserCameraEnded() {
     trackingActiveRef.current = false;
+    trackingRunIdRef.current += 1;
+    scanSessionIdRef.current = null;
     trackingSocketRef.current?.close();
     trackingSocketRef.current = null;
     if (trackingTimeoutRef.current !== null) {
@@ -268,6 +294,7 @@ export function OverviewPage({
 
   async function runTrackingFrame() {
     const socket = trackingSocketRef.current;
+    const runId = trackingRunIdRef.current;
     if (!trackingActiveRef.current || trackingInFlightRef.current) {
       return;
     }
@@ -279,19 +306,28 @@ export function OverviewPage({
         if (socket) {
           try {
             const result = await socket.sendFrame(blob);
-            if (trackingActiveRef.current) {
+            if (trackingActiveRef.current && runId === trackingRunIdRef.current) {
               onRealtimeDetection(result);
+              await saveScanSampleIfDue(blob, result);
             }
           } catch {
             socket.close();
-            trackingSocketRef.current = null;
-            if (trackingActiveRef.current) {
-              await onDetectWebcam(blob, false);
+            if (trackingSocketRef.current === socket) {
+              trackingSocketRef.current = null;
+            }
+            if (trackingActiveRef.current && runId === trackingRunIdRef.current) {
+              const result = await onDetectWebcam(blob, false);
+              if (result && trackingActiveRef.current && runId === trackingRunIdRef.current) {
+                await saveScanSampleIfDue(blob, result);
+              }
             }
           }
         } else {
-          if (trackingActiveRef.current) {
-            await onDetectWebcam(blob, false);
+          if (trackingActiveRef.current && runId === trackingRunIdRef.current) {
+            const result = await onDetectWebcam(blob, false);
+            if (result && trackingActiveRef.current && runId === trackingRunIdRef.current) {
+              await saveScanSampleIfDue(blob, result);
+            }
           }
         }
       }
@@ -309,8 +345,22 @@ export function OverviewPage({
       return;
     }
 
+    trackingRunIdRef.current += 1;
+    trackingSocketRef.current?.close();
+    trackingSocketRef.current = null;
+    if (trackingTimeoutRef.current !== null) {
+      window.clearTimeout(trackingTimeoutRef.current);
+      trackingTimeoutRef.current = null;
+    }
+    const sessionId = createScanSessionId();
+    scanSessionIdRef.current = sessionId;
+    lastScanSaveAtRef.current = Number.NEGATIVE_INFINITY;
+    setScanSessionId(sessionId);
+    setSavedScanSamples(0);
+    setScanSaveError(null);
     trackingActiveRef.current = true;
-    await onDetectWebcam(blob);
+    const firstDetection = await onDetectWebcam(blob);
+    if (firstDetection) await saveScanSampleIfDue(blob, firstDetection, true);
 
     try {
       const socket = new WebcamDetectionSocket();
@@ -322,6 +372,20 @@ export function OverviewPage({
       setCameraError(null);
     }
     void runTrackingFrame();
+  }
+
+  async function saveScanSampleIfDue(frameBlob: Blob, result: WebcamDetection, force = false) {
+    const sessionId = scanSessionIdRef.current;
+    const now = performance.now();
+    if (!sessionId || (!force && now - lastScanSaveAtRef.current < SCAN_SAVE_INTERVAL_MS)) return;
+    lastScanSaveAtRef.current = now;
+    try {
+      const sampleCount = await onSaveScanSample(sessionId, frameBlob, result);
+      setSavedScanSamples(sampleCount);
+      setScanSaveError(null);
+    } catch (error) {
+      setScanSaveError(error instanceof Error ? error.message : "Не удалось сохранить замер.");
+    }
   }
 
   function updateVideoAspectRatio() {
@@ -392,6 +456,14 @@ export function OverviewPage({
             </div>
             <StatusBadge tone={detection ? "good" : "neutral"}>{detection ? "готово" : "ожидание"}</StatusBadge>
           </div>
+          {scanSessionId ? (
+            <div className="scan-storage-status" role="status">
+              <strong>Замеры сохранены: {savedScanSamples}</strong>
+              <span>Кадр и результат детекции — не чаще 1 раза в секунду</span>
+              <code>storage/scans/{scanSessionId}/</code>
+              {scanSaveError ? <span className="scan-storage-status__error">Ошибка сохранения: {scanSaveError}</span> : null}
+            </div>
+          ) : null}
           <div
             className={`video-frame detection-frame ${portraitCamera ? "detection-frame--portrait" : ""}`}
             style={{ aspectRatio: frameAspectRatio }}

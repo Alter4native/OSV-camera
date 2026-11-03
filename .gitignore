@@ -27,6 +27,7 @@ storage/redis/
 storage/snapshots/
 storage/person-photos/
 storage/logs/
+storage/scans/
 
 # Models and datasets
 ai-service/models/*

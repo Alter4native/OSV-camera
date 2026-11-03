@@ -31,6 +31,7 @@ class Settings(BaseSettings):
     jwt_refresh_token_days: int = Field(default=7, alias="JWT_REFRESH_TOKEN_DAYS")
     ai_service_token: str = Field(default="change-me-internal-token", alias="AI_SERVICE_TOKEN")
     retention_days: int = Field(default=30, alias="RETENTION_DAYS")
+    scan_storage_path: str = Field(default="../storage/scans", alias="SCAN_STORAGE_PATH")
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 

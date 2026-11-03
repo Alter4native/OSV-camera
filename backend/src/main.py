@@ -6,6 +6,7 @@ from src.api.routes_events import router as events_router
 from src.api.routes_internal import router as internal_router
 from src.api.routes_models import router as models_router
 from src.api.routes_persons import router as persons_router
+from src.api.routes_scans import router as scans_router
 from src.api.routes_settings import router as settings_router
 from src.config import get_settings
 
@@ -24,6 +25,7 @@ app.include_router(events_router)
 app.include_router(internal_router)
 app.include_router(models_router)
 app.include_router(persons_router)
+app.include_router(scans_router)
 app.include_router(settings_router)
 
 

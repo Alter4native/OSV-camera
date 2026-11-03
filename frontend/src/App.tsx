@@ -19,6 +19,7 @@ import {
   listPersons,
   login,
   registerPersonEmbedding,
+  saveScanSample,
   type EventFilters,
   updateCamera,
   updateSettings,
@@ -286,7 +287,8 @@ export function App() {
     );
   }
 
-  async function handleWebcamDetect(frame: Blob, refreshDashboard = true) {
+  async function handleWebcamDetect(frame: Blob, refreshDashboard = true): Promise<WebcamDetection | null> {
+    if (!session) return null;
     if (refreshDashboard) {
       setLoading(true);
       setNotice(null);
@@ -297,15 +299,23 @@ export function App() {
       if (refreshDashboard) {
         await loadDashboard();
       }
+      return result;
     } catch (error) {
       if (refreshDashboard) {
         setNotice(errorMessage(error));
       }
+      return null;
     } finally {
       if (refreshDashboard) {
         setLoading(false);
       }
     }
+  }
+
+  async function handleSaveScanSample(sessionId: string, frame: Blob, detection: WebcamDetection): Promise<number> {
+    if (!session) throw new Error("Необходим вход для сохранения замеров.");
+    const result = await saveScanSample(session.tokens.access_token, sessionId, frame, detection);
+    return result.sample_count;
   }
 
   if (!session) {
@@ -335,6 +345,7 @@ export function App() {
           detection={webcamDetection}
           loading={loading}
           onDetectWebcam={handleWebcamDetect}
+          onSaveScanSample={handleSaveScanSample}
           onRealtimeDetection={setWebcamDetection}
           onClearDetection={() => setWebcamDetection(null)}
         />

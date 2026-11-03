@@ -746,6 +746,29 @@ button:focus-visible {
   margin-bottom: 16px;
 }
 
+.scan-storage-status {
+  display: grid;
+  gap: 4px;
+  margin: -2px 0 14px;
+  padding: 10px 12px;
+  color: #174b34;
+  background: #eaf6ef;
+  border: 1px solid #bfdfcb;
+  border-radius: 7px;
+  font-size: 13px;
+}
+
+.scan-storage-status code {
+  overflow-wrap: anywhere;
+  color: #426052;
+  font-size: 12px;
+}
+
+.scan-storage-status__error {
+  color: var(--red);
+  font-weight: 700;
+}
+
 .panel h2 {
   font-size: 17px;
 }
