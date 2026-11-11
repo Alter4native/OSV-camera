@@ -2,34 +2,21 @@ import { useEffect, useRef, useState } from "react";
 import {
   Activity,
   Camera,
+  ChevronDown,
   Crosshair,
-  Gauge,
   Maximize2,
   Minimize2,
+  Pause,
   Play,
   ScanLine,
-  Server,
-  Sparkles,
   Video,
-  Volume2,
-  VolumeX,
 } from "lucide-react";
 
 import { WebcamDetectionSocket } from "../api/client";
-import { EmptyState } from "../components/EmptyState";
-import { MetricTile } from "../components/MetricTile";
 import { StatusBadge } from "../components/StatusBadge";
 import { TelemetryPanel } from "../components/TelemetryPanel";
-import type {
-  Camera as CameraRecord,
-  EventRecord,
-  InferenceTelemetry,
-  ModelVersion,
-  Person,
-  Settings,
-  WebcamDetection,
-} from "../types";
-import { eventTypeLabel, formatDateTime, formatPercent, stateLabel } from "../utils/format";
+import type { InferenceTelemetry, WebcamDetection } from "../types";
+import { formatDateTime, formatPercent, stateLabel } from "../utils/format";
 
 const TRACKING_INTERVAL_MS = 0;
 const SCAN_SAVE_INTERVAL_MS = 1000;
@@ -47,13 +34,7 @@ function createScanSessionId(): string {
 }
 
 type OverviewPageProps = {
-  cameras: CameraRecord[];
-  events: EventRecord[];
-  persons: Person[];
-  models: ModelVersion[];
-  settings: Settings | null;
   aiHealth: unknown;
-  vectorStatus: unknown;
   detection: WebcamDetection | null;
   loading: boolean;
   onDetectWebcam: (frame: Blob, refreshDashboard?: boolean) => Promise<WebcamDetection | null>;
@@ -61,23 +42,6 @@ type OverviewPageProps = {
   onRealtimeDetection: (detection: WebcamDetection) => void;
   onClearDetection: () => void;
 };
-
-function readStatus(payload: unknown): string {
-  if (payload && typeof payload === "object" && "status" in payload) {
-    return String((payload as { status: unknown }).status);
-  }
-  return "недоступно";
-}
-
-function readDetectorRuntime(payload: unknown): string {
-  if (payload && typeof payload === "object" && "detector" in payload) {
-    const detector = (payload as { detector: unknown }).detector;
-    if (detector && typeof detector === "object" && "runtime" in detector) {
-      return String((detector as { runtime: unknown }).runtime);
-    }
-  }
-  return "AI";
-}
 
 function readInferenceTelemetry(payload: unknown): InferenceTelemetry | null {
   if (!payload || typeof payload !== "object" || !("telemetry" in payload)) {
@@ -98,13 +62,7 @@ function classLabel(className: string): string {
 }
 
 export function OverviewPage({
-  cameras,
-  events,
-  persons,
-  models,
-  settings,
   aiHealth,
-  vectorStatus,
   detection,
   loading,
   onDetectWebcam,
@@ -132,22 +90,11 @@ export function OverviewPage({
   const [videoAspectRatio, setVideoAspectRatio] = useState("16 / 9");
   const [portraitCamera, setPortraitCamera] = useState(false);
   const [telemetryHistory, setTelemetryHistory] = useState<InferenceTelemetry[]>([]);
-  const [soundEnabled, setSoundEnabled] = useState(() => localStorage.getItem("osvpc-detection-sound") !== "off");
-  const [demoMode, setDemoMode] = useState(false);
-  const [heatmapEnabled, setHeatmapEnabled] = useState(false);
+  const [trackingActive, setTrackingActive] = useState(false);
   const [fullscreen, setFullscreen] = useState(false);
-  const audioContextRef = useRef<AudioContext | null>(null);
-  const previousPersonCountRef = useRef(0);
-  const lastToneAtRef = useRef(0);
-  const primaryCamera = cameras[0] ?? null;
-  const activeModel = models.find((model) => model.active) ?? models[0] ?? null;
-  const peopleCountEvent = events.find((event) => event.event_type === "people_count");
-  const peopleNow = Number(peopleCountEvent?.metadata.people_count ?? peopleCountEvent?.metadata.count ?? 0);
   const selectedCamera = cameraDevices.find((device) => device.deviceId === selectedDeviceId);
-  const displayedCameraState = cameraReady ? "online" : primaryCamera?.state ?? "stopped";
-  const displayedCameraName = cameraReady
-    ? selectedCamera?.label || "Веб-камера браузера"
-    : primaryCamera?.name ?? "Источник не настроен";
+  const displayedCameraState = cameraReady ? "online" : "stopped";
+  const displayedCameraName = selectedCamera?.label || "Камера браузера";
   const frame = detection?.frame;
   const displayedTelemetry = detection?.telemetry ?? readInferenceTelemetry(aiHealth);
   const [displayDetections, setDisplayDetections] = useState<
@@ -178,30 +125,6 @@ export function OverviewPage({
       return [...current, telemetry].slice(-36);
     });
   }, [detection]);
-
-  useEffect(() => {
-    if (!detection || !soundEnabled || detection.person_count <= 0) return;
-    const now = performance.now();
-    const personAppeared = previousPersonCountRef.current === 0 || detection.person_count > previousPersonCountRef.current;
-    previousPersonCountRef.current = detection.person_count;
-    if (!personAppeared || now - lastToneAtRef.current < 1800) return;
-    lastToneAtRef.current = now;
-    const context = audioContextRef.current;
-    if (!context || context.state !== "running") return;
-    const start = context.currentTime;
-    [740, 988].forEach((frequency, index) => {
-      const oscillator = context.createOscillator();
-      const gain = context.createGain();
-      oscillator.type = "sine";
-      oscillator.frequency.value = frequency;
-      gain.gain.setValueAtTime(0.0001, start + index * 0.1);
-      gain.gain.exponentialRampToValueAtTime(0.035, start + index * 0.1 + 0.025);
-      gain.gain.exponentialRampToValueAtTime(0.0001, start + index * 0.1 + 0.22);
-      oscillator.connect(gain).connect(context.destination);
-      oscillator.start(start + index * 0.1);
-      oscillator.stop(start + index * 0.1 + 0.24);
-    });
-  }, [detection, soundEnabled]);
 
   useEffect(() => {
     void loadCameraDevices();
@@ -247,6 +170,7 @@ export function OverviewPage({
       streamRef.current?.getTracks().forEach((track) => track.stop());
       setDisplayDetections([]);
       setTelemetryHistory([]);
+      setTrackingActive(false);
       const video: MediaTrackConstraints = selectedDeviceId
         ? {
             deviceId: { exact: selectedDeviceId },
@@ -256,11 +180,6 @@ export function OverviewPage({
           }
         : { width: { ideal: 1920 }, height: { ideal: 1080 }, frameRate: { ideal: 30, min: 15 } };
       const stream = await navigator.mediaDevices.getUserMedia({ video, audio: false });
-      const AudioContextClass = window.AudioContext || window.webkitAudioContext;
-      if (AudioContextClass) {
-        audioContextRef.current ??= new AudioContextClass();
-        await audioContextRef.current.resume();
-      }
       streamRef.current = stream;
       stream.getVideoTracks().forEach((track) => {
         track.addEventListener("ended", handleBrowserCameraEnded, { once: true });
@@ -286,17 +205,6 @@ export function OverviewPage({
       setCameraError(message);
       setCameraReady(false);
     }
-  }
-
-  function toggleDetectionSound() {
-    setSoundEnabled((enabled) => {
-      const next = !enabled;
-      localStorage.setItem("osvpc-detection-sound", next ? "on" : "off");
-      if (!next) {
-        previousPersonCountRef.current = 0;
-      }
-      return next;
-    });
   }
 
   async function toggleFullscreen() {
@@ -326,6 +234,7 @@ export function OverviewPage({
       videoRef.current.srcObject = null;
     }
     setDisplayDetections([]);
+    setTrackingActive(false);
     onClearDetection();
     setCameraReady(false);
     setCameraError(null);
@@ -343,6 +252,7 @@ export function OverviewPage({
     }
     streamRef.current = null;
     setDisplayDetections([]);
+    setTrackingActive(false);
     onClearDetection();
     setCameraReady(false);
     setCameraError("Веб-камера отключена.");
@@ -448,6 +358,7 @@ export function OverviewPage({
     setSavedScanSamples(0);
     setScanSaveError(null);
     trackingActiveRef.current = true;
+    setTrackingActive(true);
     const firstDetection = await onDetectWebcam(blob);
     if (firstDetection) await saveScanSampleIfDue(blob, firstDetection, true);
 
@@ -461,6 +372,19 @@ export function OverviewPage({
       setCameraError(null);
     }
     void runTrackingFrame();
+  }
+
+  function stopDetection() {
+    trackingActiveRef.current = false;
+    trackingRunIdRef.current += 1;
+    scanSessionIdRef.current = null;
+    trackingSocketRef.current?.close();
+    trackingSocketRef.current = null;
+    if (trackingTimeoutRef.current !== null) {
+      window.clearTimeout(trackingTimeoutRef.current);
+      trackingTimeoutRef.current = null;
+    }
+    setTrackingActive(false);
   }
 
   async function saveScanSampleIfDue(frameBlob: Blob, result: WebcamDetection, force = false) {
@@ -495,20 +419,27 @@ export function OverviewPage({
     frame && portraitCamera && frame.width > frame.height ? `${frame.height} / ${frame.width}` : frame ? `${frame.width} / ${frame.height}` : videoAspectRatio;
 
   return (
-    <>
-      <section className={`dashboard-hero ${demoMode ? "dashboard-hero--demo" : ""}`}>
-        <div>
-          <span className="eyebrow">OSV-PC live</span>
-          <h2>Детекция людей с веб-камеры</h2>
-          <p>
-            Запустите одиночный анализ кадра: AI-сервис прочитает текущий кадр с локальной камеры, выполнит детекцию и
-            вернет найденные области.
-          </p>
+    <section className="page-stack overview-stack">
+      {cameraError ? <div className="notice-banner">{cameraError}</div> : null}
+
+      <article className="panel live-panel">
+        <div className="panel-header console-header">
+          <div>
+            <h2>Веб-камера</h2>
+            <span>{detection ? `Кадр #${detection.frame_sequence} · ${formatDateTime(detection.timestamp)}` : displayedCameraName}</span>
+          </div>
+          <div className="panel-header__actions">
+            {frame ? <span className="quality-pill"><ScanLine size={14} /> Качество: {frameQuality}</span> : null}
+            <StatusBadge tone={trackingActive ? "good" : cameraReady ? "warn" : "neutral"}>
+              {trackingActive ? "анализ идёт" : cameraReady ? "камера включена" : stateLabel(displayedCameraState)}
+            </StatusBadge>
+          </div>
         </div>
-        <div className="hero-actions">
-          {cameraDevices.length ? (
-            <label className="camera-picker">
-              <span>Камера</span>
+
+        <div className="live-controls">
+          {cameraDevices.length > 1 ? (
+            <label className="camera-picker camera-picker--console">
+              <span>Источник</span>
               <select value={selectedDeviceId} onChange={(event) => setSelectedDeviceId(event.target.value)} disabled={loading || cameraReady}>
                 {cameraDevices.map((device, index) => (
                   <option value={device.deviceId} key={device.deviceId || index}>
@@ -517,211 +448,117 @@ export function OverviewPage({
                 ))}
               </select>
             </label>
-          ) : null}
-          <button
-            className={`secondary-button hero-secondary ${cameraReady ? "hero-secondary--active" : ""}`}
-            type="button"
-            onClick={cameraReady ? stopBrowserCamera : startBrowserCamera}
-            disabled={loading}
-          >
-            <Video aria-hidden="true" />
-            {cameraReady ? "Отключить веб-камеру" : "Включить веб-камеру"}
-          </button>
-          <button className="primary-button hero-action" type="button" onClick={detectBrowserFrame} disabled={loading || !cameraReady}>
-            <Play aria-hidden="true" />
-            {loading ? "Анализ..." : "Детектировать кадр"}
-          </button>
-          <button className="sound-toggle" type="button" onClick={toggleDetectionSound} aria-pressed={soundEnabled}>
-            {soundEnabled ? <Volume2 aria-hidden="true" /> : <VolumeX aria-hidden="true" />}
-            <span>{soundEnabled ? "Звук включён" : "Звук выключен"}</span>
-          </button>
-          <button className={`demo-toggle ${demoMode ? "is-active" : ""}`} type="button" onClick={() => setDemoMode((value) => !value)} aria-pressed={demoMode}>
-            <Sparkles aria-hidden="true" />
-            <span>{demoMode ? "Demo mode включён" : "Demo mode"}</span>
-          </button>
-          <button className="icon-button hero-fullscreen" type="button" onClick={() => void toggleFullscreen()} aria-label={fullscreen ? "Выйти из полноэкранного режима" : "Полный экран"}>
-            {fullscreen ? <Minimize2 aria-hidden="true" /> : <Maximize2 aria-hidden="true" />}
-          </button>
-        </div>
-      </section>
+          ) : (
+            <div className="camera-source"><Camera aria-hidden="true" /><span>{selectedCamera?.label || "Камера браузера"}</span></div>
+          )}
 
-      {cameraError ? <div className="notice-banner">{cameraError}</div> : null}
-
-      <section className="content-grid dashboard-grid dashboard-grid--camera">
-        <article className="panel live-panel">
-          <div className="panel-header">
-            <div>
-              <h2>Кадр веб-камеры</h2>
-              <span>{detection ? `Кадр #${detection.frame_sequence} - ${formatDateTime(detection.timestamp)}` : "Ожидает запуска детекта"}</span>
-            </div>
-            <div className="panel-header__actions">
-              <span className="quality-pill"><ScanLine size={14} /> Качество: {frameQuality}</span>
-              <StatusBadge tone={detection ? "good" : "neutral"}>{detection ? "готово" : "ожидание"}</StatusBadge>
-            </div>
-          </div>
-          {scanSessionId ? (
-            <div className="scan-storage-status" role="status">
-              <strong>Замеры сохранены: {savedScanSamples}</strong>
-              <span>Кадр и результат детекции — не чаще 1 раза в секунду</span>
-              <code>storage/scans/{scanSessionId}/</code>
-              {scanSaveError ? <span className="scan-storage-status__error">Ошибка сохранения: {scanSaveError}</span> : null}
-            </div>
-          ) : null}
-          <div
-            className={`video-frame detection-frame ${portraitCamera ? "detection-frame--portrait" : ""}`}
-            style={{ aspectRatio: frameAspectRatio }}
-            aria-label="Результат детекции с веб-камеры"
-          >
-            <video className="detection-video" ref={videoRef} muted playsInline onLoadedMetadata={updateVideoAspectRatio} onResize={updateVideoAspectRatio} />
-            {detection?.frame_image ? <img className="detection-image" src={detection.frame_image} alt="" /> : null}
-            {heatmapEnabled ? <div className="heatmap-overlay" aria-label="Тепловая карта активности" /> : null}
-            <canvas ref={canvasRef} hidden />
-            {frame ? (
-              <span className="frame-size">
-                {frame.width} x {frame.height}
-              </span>
-            ) : null}
-            {displayDetections.map((item, index) => {
-              const width = frame?.width || 1;
-              const height = frame?.height || 1;
-              return (
-                <div
-                  className="person-box detection-box"
-                  key={item.track_id != null ? `track-${item.track_id}` : `detection-${index}`}
-                  style={{
-                    left: `${(item.bbox.x1 / width) * 100}%`,
-                    top: `${(item.bbox.y1 / height) * 100}%`,
-                    width: `${(item.bbox.width / width) * 100}%`,
-                    height: `${(item.bbox.height / height) * 100}%`,
-                  }}
-                >
-                  <span className="detection-box__label">
-                    <span className="detection-box__index">#{String(item.track_id ?? index + 1).padStart(2, "0")}</span>
-                    <span className="detection-box__class">{classLabel(item.class_name)}</span>
-                    <span className="detection-box__confidence">{formatPercent(item.confidence)}</span>
-                  </span>
-                </div>
-              );
-            })}
-            {!detection && !cameraReady ? (
-              <div className="detection-empty">
-                <Crosshair aria-hidden="true" />
-                <strong>Нажмите "Запустить детект"</strong>
-                <span>Результаты YOLO появятся поверх схемы кадра.</span>
-              </div>
-            ) : null}
-          </div>
-          <div className="live-panel__toolbar">
-            <span><i className="live-indicator" /> {cameraReady ? "Поток в реальном времени" : "Поток не запущен"}</span>
-            <button className={`text-button ${heatmapEnabled ? "is-selected" : ""}`} type="button" onClick={() => setHeatmapEnabled((value) => !value)}>
-              <Activity size={15} /> {heatmapEnabled ? "Скрыть heatmap" : "Показать heatmap"}
+          <div className="live-controls__buttons">
+            <button
+              className={`secondary-button camera-toggle ${cameraReady ? "is-connected" : ""}`}
+              type="button"
+              onClick={cameraReady ? stopBrowserCamera : startBrowserCamera}
+              disabled={loading}
+            >
+              <Video aria-hidden="true" />
+              {cameraReady ? "Отключить камеру" : "Включить камеру"}
+            </button>
+            <button
+              className={`primary-button tracking-toggle ${trackingActive ? "is-running" : ""}`}
+              type="button"
+              onClick={trackingActive ? stopDetection : () => void detectBrowserFrame()}
+              disabled={loading || !cameraReady}
+            >
+              {trackingActive ? <Pause aria-hidden="true" /> : <Play aria-hidden="true" />}
+              {loading ? "Запускаем..." : trackingActive ? "Остановить анализ" : "Начать анализ"}
+            </button>
+            <button
+              className="icon-button fullscreen-toggle"
+              type="button"
+              onClick={() => void toggleFullscreen()}
+              aria-label={fullscreen ? "Выйти из полноэкранного режима" : "Полноэкранный режим"}
+              title={fullscreen ? "Выйти из полноэкранного режима" : "Полноэкранный режим"}
+            >
+              {fullscreen ? <Minimize2 aria-hidden="true" /> : <Maximize2 aria-hidden="true" />}
             </button>
           </div>
-        </article>
 
-        <article className="panel">
-          <div className="panel-header">
-            <div>
-              <h2>Сводка распознавания</h2>
-              <span>Порог лица {settings?.face_recognition_threshold ?? 0.65}</span>
-            </div>
+          <div className="detection-count" aria-live="polite" aria-atomic="true">
+            <span>Людей в кадре</span>
+            <strong>{detection?.person_count ?? 0}</strong>
           </div>
-          <div className="recognition-list">
-            <div>
-              <span>Людей сейчас</span>
-              <strong>{String(detection?.person_count ?? peopleNow)}</strong>
-            </div>
-            <div>
-              <span>Известные профили</span>
-              <strong>{persons.length}</strong>
-            </div>
-            <div>
-              <span>Векторная БД</span>
-              <strong>{readStatus(vectorStatus)}</strong>
-            </div>
-          </div>
-        </article>
-      </section>
+        </div>
 
-      <section className="status-grid" aria-label="Статус платформы">
-        <MetricTile
-          icon={Camera}
-          label={cameraReady ? "Веб-камера" : "Камера"}
-          value={stateLabel(displayedCameraState)}
-          detail={displayedCameraName}
+        {scanSessionId ? (
+          <div className="scan-storage-status" role="status">
+            <strong>{trackingActive ? "Идёт запись замеров" : "Замеры сохранены"}: {savedScanSamples}</strong>
+            <span>Кадры и результаты анализа сохраняются автоматически во время запуска.</span>
+            <code>storage/scans/{scanSessionId}/</code>
+            {scanSaveError ? <span className="scan-storage-status__error">Ошибка сохранения: {scanSaveError}</span> : null}
+          </div>
+        ) : null}
+
+        <div
+          className={`video-frame detection-frame ${portraitCamera ? "detection-frame--portrait" : ""}`}
+          style={{ aspectRatio: frameAspectRatio }}
+          aria-label="Изображение с веб-камеры и рамки обнаруженных людей"
+          role="img"
+        >
+          <video className="detection-video" ref={videoRef} muted playsInline onLoadedMetadata={updateVideoAspectRatio} onResize={updateVideoAspectRatio} />
+          {detection?.frame_image ? <img className="detection-image" src={detection.frame_image} alt="" /> : null}
+          <canvas ref={canvasRef} hidden />
+          {frame ? (
+            <span className="frame-size">
+              {frame.width} × {frame.height}
+            </span>
+          ) : null}
+          {displayDetections.map((item, index) => {
+            const width = frame?.width || 1;
+            const height = frame?.height || 1;
+            return (
+              <div
+                className="person-box detection-box"
+                key={item.track_id != null ? `track-${item.track_id}` : `detection-${index}`}
+                style={{
+                  left: `${(item.bbox.x1 / width) * 100}%`,
+                  top: `${(item.bbox.y1 / height) * 100}%`,
+                  width: `${(item.bbox.width / width) * 100}%`,
+                  height: `${(item.bbox.height / height) * 100}%`,
+                }}
+              >
+                <span className="detection-box__label">
+                  <span className="detection-box__index">#{String(item.track_id ?? index + 1).padStart(2, "0")}</span>
+                  <span className="detection-box__class">{classLabel(item.class_name)}</span>
+                  <span className="detection-box__confidence">{formatPercent(item.confidence)}</span>
+                </span>
+              </div>
+            );
+          })}
+          {!detection && !trackingActive ? (
+            <div className="detection-empty">
+              <Crosshair aria-hidden="true" />
+              <strong>{cameraReady ? "Камера готова к анализу" : "Подключите веб-камеру"}</strong>
+              <span>{cameraReady ? "Нажмите «Начать анализ», чтобы отслеживать людей." : "После подключения здесь появится изображение и рамки найденных людей."}</span>
+            </div>
+          ) : null}
+        </div>
+
+      </article>
+
+      <details className="telemetry-disclosure">
+        <summary>
+          <span><Activity aria-hidden="true" /> Подробная статистика</span>
+          <span className="telemetry-disclosure__hint">FPS, задержка, уверенность и качество кадра</span>
+          <ChevronDown className="telemetry-disclosure__chevron" aria-hidden="true" />
+        </summary>
+        <TelemetryPanel
+          telemetry={displayedTelemetry}
+          history={telemetryHistory}
+          visibleTracks={detection?.tracking?.visible_tracks ?? detection?.tracks?.length ?? detection?.person_count ?? 0}
+          cameraActive={cameraReady}
+          quality={detection?.quality}
+          recognition={detection?.recognition}
         />
-        <MetricTile icon={Crosshair} label="Последний детект" value={String(detection?.person_count ?? 0)} detail="людей в кадре" />
-        <MetricTile
-          icon={Gauge}
-          label="AI · FPS"
-          value={displayedTelemetry ? displayedTelemetry.processing_fps.toFixed(1) : "—"}
-          detail={`цель ${settings?.processing_fps ?? primaryCamera?.processing_fps ?? 0} кадр/с`}
-        />
-        <MetricTile icon={Activity} label="AI-сервис" value={readStatus(aiHealth)} detail={readDetectorRuntime(aiHealth)} />
-      </section>
-
-      <TelemetryPanel
-        telemetry={displayedTelemetry}
-        history={telemetryHistory}
-        visibleTracks={detection?.tracking?.visible_tracks ?? detection?.tracks?.length ?? detection?.person_count ?? 0}
-        cameraActive={cameraReady}
-        quality={detection?.quality}
-        recognition={detection?.recognition}
-      />
-
-      <section className="content-grid content-grid--balanced">
-        <article className="panel">
-          <div className="panel-header">
-            <div>
-              <h2>Последние события</h2>
-              <span>Загружено: {events.length}</span>
-            </div>
-          </div>
-          {events.length ? (
-            <div className="compact-list">
-              {events.slice(0, 5).map((event) => (
-                <div className="compact-row" key={event.event_id}>
-                  <div>
-                    <strong>{eventTypeLabel(event.event_type)}</strong>
-                    <span>{formatDateTime(event.timestamp)}</span>
-                  </div>
-                  <span>{formatPercent(event.confidence)}</span>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <EmptyState title="Событий пока нет" body="Они появятся после публикации детекций AI-сервисом." />
-          )}
-        </article>
-
-        <article className="panel">
-          <div className="panel-header">
-            <div>
-              <h2>Модель детекции</h2>
-              <span>Активный runtime</span>
-            </div>
-            <Server aria-hidden="true" />
-          </div>
-          {activeModel ? (
-            <div className="definition-list">
-              <div>
-                <span>Название</span>
-                <strong>{activeModel.name}</strong>
-              </div>
-              <div>
-                <span>Runtime</span>
-                <strong>{activeModel.runtime}</strong>
-              </div>
-              <div>
-                <span>Версия</span>
-                <strong>{activeModel.version}</strong>
-              </div>
-            </div>
-          ) : (
-            <EmptyState title="Модель не зарегистрирована" body="Добавьте модель в registry после обучения или экспорта." />
-          )}
-        </article>
-      </section>
-    </>
+      </details>
+    </section>
   );
 }

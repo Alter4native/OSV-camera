@@ -335,13 +335,7 @@ export function App() {
 
       {activePage === "overview" ? (
         <OverviewPage
-          cameras={cameras}
-          events={events}
-          persons={persons}
-          models={models}
-          settings={settings}
           aiHealth={aiHealth}
-          vectorStatus={vectorStatus}
           detection={webcamDetection}
           loading={loading}
           onDetectWebcam={handleWebcamDetect}

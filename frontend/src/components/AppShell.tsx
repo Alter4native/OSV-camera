@@ -7,7 +7,6 @@ import {
   RefreshCw,
   Settings,
   ShieldCheck,
-  Sparkles,
   Users,
 } from "lucide-react";
 
@@ -67,7 +66,6 @@ export function AppShell({ activePage, children, loading, user, onNavigate, onRe
                 >
                   <Icon aria-hidden="true" />
                   <span>{item.label}</span>
-                  {activePage === item.id ? <Sparkles className="nav-item__spark" aria-hidden="true" /> : null}
                 </button>
               </div>
             );
@@ -80,11 +78,11 @@ export function AppShell({ activePage, children, loading, user, onNavigate, onRe
         </div>
       </aside>
 
-      <section className="workspace">
+      <section className={`workspace workspace--${activePage}`}>
         <header className="topbar">
           <div>
-            <span className="topbar-kicker">LIVE / CONTROL ROOM</span>
-            <h1>Центр мониторинга</h1>
+            <span className="topbar-kicker">{activePage === "overview" ? "OSV-PC / LIVE" : "LIVE / CONTROL ROOM"}</span>
+            <h1>{activePage === "overview" ? "Мониторинг" : "Центр мониторинга"}</h1>
             <p>Компьютерное зрение, люди и события безопасности</p>
           </div>
           <div className="topbar-actions">
