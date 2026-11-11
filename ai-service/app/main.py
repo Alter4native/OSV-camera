@@ -18,6 +18,7 @@ from app.recognition.factory import build_face_recognizer
 from app.tracking.factory import build_tracker
 from app.video.manager import CameraConfig, CameraManager
 from app.video.source import VideoFrame
+from app.quality import analyze_frame
 
 settings = get_settings()
 camera_manager = CameraManager(
@@ -88,6 +89,7 @@ app = FastAPI(
 )
 webrtc_peers: set[object] = set()
 browser_frame_sequence = count(1)
+browser_last_frame_sequence = 0
 
 
 def health_payload() -> dict[str, object]:
@@ -171,6 +173,7 @@ def webcam_detect_once(max_attempts: int = 10) -> dict[str, object]:
             },
         ) from exc
 
+    quality_payload = analyze_frame(frame.image).as_dict() if hasattr(frame.image, "shape") else None
     return {
         "camera_id": frame.camera_id,
         "frame_sequence": frame.sequence,
@@ -184,6 +187,7 @@ def webcam_detect_once(max_attempts: int = 10) -> dict[str, object]:
         "detections": [detection.as_dict() for detection in detections],
         "camera": camera_manager.get_status(),
         "detector": detector_payload,
+        "quality": quality_payload,
         "telemetry": detector_telemetry(),
     }
 
@@ -264,10 +268,14 @@ async def process_webrtc_track(track: object, get_data_channel: object) -> None:
 
 
 def process_browser_frame(image: object) -> dict[str, object]:
+    global browser_last_frame_sequence
     height, width = image.shape[:2]
+    sequence = next(browser_frame_sequence)
+    dropped_frames = max(0, sequence - browser_last_frame_sequence - 1) if browser_last_frame_sequence else 0
+    browser_last_frame_sequence = sequence
     frame = VideoFrame(
         camera_id="browser-webcam",
-        sequence=next(browser_frame_sequence),
+        sequence=sequence,
         timestamp=datetime.now(timezone.utc),
         image=image,
         width=width,
@@ -286,6 +294,12 @@ def process_browser_frame(image: object) -> dict[str, object]:
                 "detector": detector.metadata().as_dict(),
             },
         ) from exc
+
+    largest_person = max(
+        (tracked_object.bbox.height for tracked_object in tracked_objects if tracked_object.class_name == "person"),
+        default=0,
+    )
+    quality = analyze_frame(image, face_size_px=largest_person, dropped_frames=dropped_frames)
 
     return {
         "camera_id": frame.camera_id,
@@ -306,6 +320,11 @@ def process_browser_frame(image: object) -> dict[str, object]:
         },
         "detector": detector_payload,
         "tracking": browser_tracker.metadata().as_dict() | {"visible_tracks": len(tracked_objects)},
+        "quality": quality.as_dict(),
+        "recognition": {
+            "stability": "confirmed" if tracked_objects and all(track.hits >= 3 for track in tracked_objects) else "candidate",
+            "confirmation_frames": 3,
+        },
         "telemetry": detector_telemetry(),
     }
 

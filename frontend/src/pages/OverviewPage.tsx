@@ -665,6 +665,8 @@ export function OverviewPage({
         history={telemetryHistory}
         visibleTracks={detection?.tracking?.visible_tracks ?? detection?.tracks?.length ?? detection?.person_count ?? 0}
         cameraActive={cameraReady}
+        quality={detection?.quality}
+        recognition={detection?.recognition}
       />
 
       <section className="content-grid content-grid--balanced">

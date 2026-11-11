@@ -125,6 +125,16 @@ export type WebcamDetection = {
     track_ttl_frames: number;
     new_track_threshold: number;
   };
+  quality?: {
+    sharpness: number;
+    brightness: number;
+    face_size_px: number;
+    dropped_frames: number;
+  };
+  recognition?: {
+    stability: "candidate" | "confirmed";
+    confirmation_frames: number;
+  };
   telemetry?: InferenceTelemetry;
 };
 

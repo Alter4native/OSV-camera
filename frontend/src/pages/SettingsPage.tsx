@@ -37,6 +37,12 @@ function statusLabel(status: string): string {
   return labels[status] ?? status;
 }
 
+const thresholdPresets = {
+  Demo: { person_confidence_threshold: 0.5, face_recognition_threshold: 0.55 },
+  Balanced: { person_confidence_threshold: 0.65, face_recognition_threshold: 0.65 },
+  Strict: { person_confidence_threshold: 0.8, face_recognition_threshold: 0.75 },
+} as const;
+
 export function SettingsPage({
   role,
   settings,
@@ -161,6 +167,22 @@ export function SettingsPage({
             <Settings aria-hidden="true" />
           </div>
           <form className="form-grid" onSubmit={handleSubmit}>
+            <div className="preset-row" aria-label="Пресеты порогов">
+              <span>Профиль чувствительности</span>
+              <div>
+                {(Object.keys(thresholdPresets) as Array<keyof typeof thresholdPresets>).map((preset) => (
+                  <button
+                    className="preset-button"
+                    type="button"
+                    key={preset}
+                    disabled={!writable}
+                    onClick={() => setDraft({ ...draft, ...thresholdPresets[preset] })}
+                  >
+                    {preset}
+                  </button>
+                ))}
+              </div>
+            </div>
             <label>
               FPS обработки
               <input
@@ -171,6 +193,7 @@ export function SettingsPage({
                 disabled={!writable}
                 onChange={(event) => setDraft({ ...draft, processing_fps: Number(event.target.value) })}
               />
+              <small className="field-hint">Высокий порог уменьшает ложные срабатывания, но может пропустить человека.</small>
             </label>
             <label>
               Уверенность детекции человека
@@ -185,6 +208,7 @@ export function SettingsPage({
                   setDraft({ ...draft, person_confidence_threshold: Number(event.target.value) })
                 }
               />
+              <small className="field-hint">Высокий порог повышает точность совпадения, но требует лучшего качества лица.</small>
             </label>
             <label>
               Порог распознавания лица

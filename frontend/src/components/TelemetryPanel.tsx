@@ -1,12 +1,14 @@
 import { Activity, Boxes, Cpu, Gauge, ScanLine, Timer } from "lucide-react";
 
-import type { InferenceTelemetry } from "../types";
+import type { InferenceTelemetry, WebcamDetection } from "../types";
 
 type TelemetryPanelProps = {
   telemetry: InferenceTelemetry | null;
   history: InferenceTelemetry[];
   visibleTracks: number;
   cameraActive: boolean;
+  quality?: WebcamDetection["quality"];
+  recognition?: WebcamDetection["recognition"];
 };
 
 function formatMetric(value: number | null | undefined, digits = 1): string {
@@ -37,7 +39,7 @@ function Sparkline({ values, label }: { values: number[]; label: string }) {
   );
 }
 
-export function TelemetryPanel({ telemetry, history, visibleTracks, cameraActive }: TelemetryPanelProps) {
+export function TelemetryPanel({ telemetry, history, visibleTracks, cameraActive, quality, recognition }: TelemetryPanelProps) {
   const confidence = Math.max(0, Math.min(1, telemetry?.average_confidence ?? 0));
   const hasSamples = Boolean(telemetry?.frames_processed);
   const liveState = cameraActive ? "Поток активен" : hasSamples ? "Последний кадр" : "Ожидание";
@@ -97,12 +99,22 @@ export function TelemetryPanel({ telemetry, history, visibleTracks, cameraActive
           </div>
           <span className="telemetry-note">кадр {telemetry?.frame_width || 0} × {telemetry?.frame_height || 0}</span>
         </article>
+        <article className="telemetry-card telemetry-card--quality">
+          <div className="telemetry-card-title"><ScanLine size={16} /><span>Качество кадра</span></div>
+          <div className="quality-metric-row"><strong>{quality ? `${Math.round(quality.brightness)}` : "—"}</strong><small>яркость</small></div>
+          <div className="quality-bars">
+            <span style={{ width: `${Math.min(100, (quality?.sharpness ?? 0) / 8)}%` }} />
+          </div>
+          <span className="telemetry-note">sharpness {quality ? Math.round(quality.sharpness) : "—"} · лицо {quality?.face_size_px || "—"} px</span>
+        </article>
       </div>
 
       <footer className="telemetry-footer">
         <div><Boxes size={15} /><span>Треки в кадре</span><strong>{visibleTracks}</strong></div>
         <div><Activity size={15} /><span>Кадров обработано</span><strong>{telemetry?.frames_processed ?? 0}</strong></div>
         <div><Cpu size={15} /><span>Runtime</span><strong>Ultralytics</strong></div>
+        <div><ScanLine size={15} /><span>Стабильность</span><strong>{recognition?.stability ?? "—"}</strong></div>
+        <div><Activity size={15} /><span>Dropped frames</span><strong>{quality?.dropped_frames ?? 0}</strong></div>
       </footer>
     </section>
   );

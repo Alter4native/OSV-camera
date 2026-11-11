@@ -16,6 +16,18 @@ class TrackedObject:
     confidence: float
     hits: int
 
+    @property
+    def stability(self) -> str:
+        return "confirmed" if self.hits >= 3 else "candidate"
+
+    @property
+    def confidence_state(self) -> str:
+        if self.confidence >= 0.8:
+            return "high"
+        if self.confidence >= 0.6:
+            return "medium"
+        return "low"
+
     @classmethod
     def from_detection(cls, detection: Detection, track_id: int, hits: int) -> "TrackedObject":
         return cls(
@@ -41,6 +53,8 @@ class TrackedObject:
             "class_name": self.class_name,
             "confidence": self.confidence,
             "hits": self.hits,
+            "stability": self.stability,
+            "confidence_state": self.confidence_state,
         }
 
 

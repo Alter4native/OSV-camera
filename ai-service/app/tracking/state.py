@@ -35,12 +35,16 @@ class Track:
     last_frame_sequence: int
     last_seen_at: datetime
     hits: int = 1
+    confidence_smoothing: float = 0.35
 
     def update(self, detection: Detection) -> None:
         self.bbox = detection.bbox
         self.class_id = detection.class_id
         self.class_name = detection.class_name
-        self.confidence = detection.confidence
+        self.confidence = (
+            self.confidence * (1 - self.confidence_smoothing)
+            + detection.confidence * self.confidence_smoothing
+        )
         self.last_frame_sequence = detection.frame_sequence
         self.last_seen_at = detection.timestamp
         self.hits += 1
