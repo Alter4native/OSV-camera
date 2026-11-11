@@ -1,5 +1,5 @@
 from app.recognition.base import FaceRecognizer
-from app.recognition.face import SimpleFaceRecognizer
+from app.recognition.face import InsightFaceRecognizer, SimpleFaceRecognizer
 from app.recognition.vector_store import InMemoryEmbeddingStore, QdrantEmbeddingStore
 
 
@@ -17,6 +17,20 @@ def build_face_recognizer(
     normalized_runtime = runtime.lower()
     if normalized_runtime == "simple":
         return SimpleFaceRecognizer(
+            threshold=threshold,
+            embedding_dim=embedding_dim,
+            model_name=model_name,
+            store=build_embedding_store(
+                runtime=embedding_store_runtime,
+                embedding_dim=embedding_dim,
+                qdrant_url=qdrant_url,
+                qdrant_collection_name=qdrant_collection_name,
+                qdrant_api_key=qdrant_api_key,
+                qdrant_timeout_seconds=qdrant_timeout_seconds,
+            ),
+        )
+    if normalized_runtime == "insightface":
+        return InsightFaceRecognizer(
             threshold=threshold,
             embedding_dim=embedding_dim,
             model_name=model_name,

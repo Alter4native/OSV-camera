@@ -4,8 +4,9 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 from src.api.errors import not_found_to_http
 from src.auth.dependencies import get_current_user
+from src.db.session import get_db
 from src.schemas.domain import EventRead, EventType
-from src.services.store import NotFoundError, store
+from src.services.db_store import NotFoundError, store
 
 
 router = APIRouter(prefix="/api/events", tags=["events"])
@@ -18,8 +19,10 @@ def list_events(
     date_from: datetime | None = Query(default=None),
     date_to: datetime | None = Query(default=None),
     _user=Depends(get_current_user),
+    session=Depends(get_db),
 ) -> list[EventRead]:
     return store.list_events(
+        session=session,
         camera_id=camera_id,
         event_type=event_type,
         date_from=date_from,
@@ -28,17 +31,17 @@ def list_events(
 
 
 @router.get("/{event_id}", response_model=EventRead)
-def get_event(event_id: str, _user=Depends(get_current_user)) -> EventRead:
+def get_event(event_id: str, _user=Depends(get_current_user), session=Depends(get_db)) -> EventRead:
     try:
-        return store.get_event(event_id)
+        return store.get_event(session, event_id)
     except NotFoundError as exc:
         raise not_found_to_http(exc) from exc
 
 
 @router.get("/{event_id}/snapshot")
-def get_event_snapshot(event_id: str, _user=Depends(get_current_user)) -> dict[str, object]:
+def get_event_snapshot(event_id: str, _user=Depends(get_current_user), session=Depends(get_db)) -> dict[str, object]:
     try:
-        event = store.get_event(event_id)
+        event = store.get_event(session, event_id)
     except NotFoundError as exc:
         raise not_found_to_http(exc) from exc
 
@@ -50,4 +53,3 @@ def get_event_snapshot(event_id: str, _user=Depends(get_current_user)) -> dict[s
         "snapshot_storage_key": event.snapshot_url,
         "access": "authorized",
     }
-

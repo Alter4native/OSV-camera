@@ -48,8 +48,8 @@ import type {
 import { canWrite } from "./utils/format";
 
 const defaultEmbeddingPayload = {
-  embedding_model: "simple-hash-face-embedding",
-  embedding_dim: 32,
+  embedding_model: "buffalo_l",
+  embedding_dim: 512,
   vector_collection: "person_face_embeddings",
   threshold: 0.65,
 };

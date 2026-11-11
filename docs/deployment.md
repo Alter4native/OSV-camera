@@ -125,9 +125,9 @@ PEOPLE_COUNT_INTERVAL_SECONDS=10
 Recognition-related env:
 
 ```text
-FACE_RECOGNITION_RUNTIME=simple
-FACE_EMBEDDING_DIM=32
-FACE_EMBEDDING_MODEL_NAME=simple-hash-face-embedding
+FACE_RECOGNITION_RUNTIME=insightface
+FACE_EMBEDDING_DIM=512
+FACE_EMBEDDING_MODEL_NAME=buffalo_l
 FACE_RECOGNITION_THRESHOLD=0.65
 EMBEDDING_STORE_RUNTIME=qdrant
 QDRANT_URL=http://qdrant:6333
@@ -135,7 +135,7 @@ QDRANT_COLLECTION_PERSON_FACE_EMBEDDINGS=person_face_embeddings
 QDRANT_TIMEOUT_SECONDS=3
 ```
 
-The `simple` runtime is for MVP wiring and tests, not production biometrics. `EMBEDDING_STORE_RUNTIME=memory` is acceptable for isolated local tests; Compose should use `qdrant`.
+The `insightface` runtime is the production default and uses the `buffalo_l` model pack. The AI image installs `build-essential` because InsightFace 0.7.3 currently builds a native Cython extension from source. The `simple` runtime is retained only for isolated tests. `EMBEDDING_STORE_RUNTIME=memory` is acceptable for isolated local tests; Compose should use `qdrant`.
 
 Vector DB checks:
 

@@ -67,9 +67,9 @@ def test_ai_health() -> None:
         "new_track_threshold": 0.5,
     }
     assert payload["recognition"] == {
-        "runtime": "simple",
-        "model_name": "simple-hash-face-embedding",
-        "embedding_dim": 32,
+        "runtime": "insightface",
+        "model_name": "buffalo_l",
+        "embedding_dim": 512,
         "threshold": 0.65,
         "enrolled_embeddings": 0,
         "embedding_store": {
@@ -173,8 +173,8 @@ def test_recognition_status_endpoint() -> None:
 
     assert response.status_code == 200
     payload = response.json()
-    assert payload["runtime"] == "simple"
-    assert payload["embedding_dim"] == 32
+    assert payload["runtime"] == "insightface"
+    assert payload["embedding_dim"] == 512
     assert payload["threshold"] == 0.65
 
 

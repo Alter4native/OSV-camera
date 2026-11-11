@@ -1,6 +1,6 @@
 from functools import lru_cache
 
-from pydantic import Field
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -32,6 +32,13 @@ class Settings(BaseSettings):
     ai_service_token: str = Field(default="change-me-internal-token", alias="AI_SERVICE_TOKEN")
     retention_days: int = Field(default=30, alias="RETENTION_DAYS")
     scan_storage_path: str = Field(default="../storage/scans", alias="SCAN_STORAGE_PATH")
+
+    @field_validator("database_url", mode="before")
+    @classmethod
+    def normalize_local_database_url(cls, value: str) -> str:
+        if value.startswith("******postgres"):
+            return "sqlite:///./osvpc.db"
+        return value
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 

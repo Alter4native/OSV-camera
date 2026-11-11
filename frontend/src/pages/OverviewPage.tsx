@@ -19,8 +19,8 @@ import { eventTypeLabel, formatDateTime, formatPercent, stateLabel } from "../ut
 
 const TRACKING_INTERVAL_MS = 0;
 const SCAN_SAVE_INTERVAL_MS = 1000;
-const MAX_DETECTION_WIDTH = 960;
-const JPEG_QUALITY = 0.68;
+const MAX_DETECTION_WIDTH = 1920;
+const JPEG_QUALITY = 0.9;
 
 function createScanSessionId(): string {
   if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
@@ -208,6 +208,14 @@ export function OverviewPage({
       stream.getVideoTracks().forEach((track) => {
         track.addEventListener("ended", handleBrowserCameraEnded, { once: true });
       });
+      const activeTrack = stream.getVideoTracks()[0];
+      if (activeTrack?.applyConstraints) {
+        await activeTrack.applyConstraints({
+          width: { ideal: 1920 },
+          height: { ideal: 1080 },
+          frameRate: { ideal: 30, min: 15 },
+        });
+      }
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
         await videoRef.current.play();
@@ -282,6 +290,8 @@ export function OverviewPage({
       return null;
     }
 
+    context.imageSmoothingEnabled = true;
+    context.imageSmoothingQuality = "high";
     context.drawImage(video, 0, 0, width, height);
     const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/jpeg", JPEG_QUALITY));
     if (!blob) {

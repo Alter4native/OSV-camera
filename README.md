@@ -54,7 +54,7 @@ operator / operator
 viewer / viewer
 ```
 
-These users are for local MVP development only. Stage 8 added PostgreSQL schema/migrations; API persistence will be switched from in-memory store to DB repositories in the next backend integration step.
+These users are for local MVP development only. Backend API data is persisted through SQLAlchemy repositories into the configured PostgreSQL database (SQLite is used only when no database URL is supplied for local tests).
 
 Database migrations:
 
@@ -86,7 +86,7 @@ Invoke-RestMethod http://localhost:8010/ai/vector/status
 
 Event payload note: `snapshot_url` is a private storage key in MVP, not a public URL.
 
-Recognition note: the current `simple` recognizer is deterministic and test-friendly. It is not a production biometric model. Vector storage is pluggable via `EMBEDDING_STORE_RUNTIME=memory|qdrant`; Docker Compose defaults to Qdrant.
+Recognition note: production runs use InsightFace `buffalo_l` embeddings (512 dimensions). The deterministic `simple` recognizer remains available only when explicitly selected for fast unit tests. Vector storage is pluggable via `EMBEDDING_STORE_RUNTIME=memory|qdrant`; Docker Compose defaults to Qdrant.
 
 Frontend:
 

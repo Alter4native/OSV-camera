@@ -19,6 +19,7 @@ def seed_roles(session: Session) -> None:
     for role in Role:
         if role.value not in existing:
             session.add(RoleModel(role_id=new_id(), name=role.value))
+    session.flush()
 
 
 def seed_users(session: Session) -> None:
@@ -37,7 +38,7 @@ def seed_camera(session: Session) -> None:
     if existing_camera is None:
         cameras.create(
             CameraCreate(
-                name="Локальная камера",
+                name="Local camera",
                 source_type="webcam",
                 source_uri="0",
                 enabled=True,

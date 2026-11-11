@@ -23,10 +23,10 @@ class Settings(BaseSettings):
 
     person_confidence_threshold: float = Field(default=0.65, alias="PERSON_CONFIDENCE_THRESHOLD")
     face_recognition_threshold: float = Field(default=0.65, alias="FACE_RECOGNITION_THRESHOLD")
-    face_recognition_runtime: str = Field(default="simple", alias="FACE_RECOGNITION_RUNTIME")
-    face_embedding_dim: int = Field(default=32, alias="FACE_EMBEDDING_DIM")
+    face_recognition_runtime: str = Field(default="insightface", alias="FACE_RECOGNITION_RUNTIME")
+    face_embedding_dim: int = Field(default=512, alias="FACE_EMBEDDING_DIM")
     face_embedding_model_name: str = Field(
-        default="simple-hash-face-embedding",
+        default="buffalo_l",
         alias="FACE_EMBEDDING_MODEL_NAME",
     )
     embedding_store_runtime: str = Field(default="memory", alias="EMBEDDING_STORE_RUNTIME")

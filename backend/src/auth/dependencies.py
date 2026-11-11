@@ -6,8 +6,9 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from src.auth.tokens import TokenError, decode_token
 from src.config import get_settings
+from src.db.session import get_db
 from src.schemas.domain import Role, UserRecord
-from src.services.store import store
+from src.services.db_store import store
 
 
 bearer_scheme = HTTPBearer(auto_error=False)
@@ -15,6 +16,7 @@ bearer_scheme = HTTPBearer(auto_error=False)
 
 def get_current_user(
     credentials: HTTPAuthorizationCredentials | None = Depends(bearer_scheme),
+    session=Depends(get_db),
 ) -> UserRecord:
     if credentials is None or credentials.scheme.lower() != "bearer":
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Missing bearer token")
@@ -24,7 +26,7 @@ def get_current_user(
     except TokenError as exc:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=str(exc)) from exc
 
-    user = store.get_user(str(payload["sub"]))
+    user = store.get_user(session, str(payload["sub"]))
     if user is None or not user.is_active:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
 
@@ -49,4 +51,3 @@ def require_service_token(
 
     if not hmac.compare_digest(credentials.credentials, settings.ai_service_token):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Invalid service token")
-
