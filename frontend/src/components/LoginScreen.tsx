@@ -35,7 +35,7 @@ export function LoginScreen({ error, loading, theme, onLogin, onToggleTheme }: L
           <ShieldCheck aria-hidden="true" />
           <div>
             <h1>OSV-PC</h1>
-            <p>People counting · панель видеоаналитики и детекции людей</p>
+            <p>Система видеоаналитики и подсчёта людей</p>
           </div>
         </div>
 

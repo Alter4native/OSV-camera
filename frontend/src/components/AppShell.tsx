@@ -17,6 +17,14 @@ import { canWrite } from "../utils/format";
 
 export type ActivePage = "overview" | "cameras" | "events" | "people" | "settings";
 
+const pageInfo: Record<ActivePage, { title: string; description: string }> = {
+  overview: { title: "Мониторинг", description: "Просмотр с камеры и отслеживание людей в кадре." },
+  cameras: { title: "Камеры", description: "Настройка веб-камер и RTSP-источников." },
+  events: { title: "События", description: "История детекций, состояний камер и сохранённых кадров." },
+  people: { title: "Люди", description: "Профили, фотографии и данные для распознавания." },
+  settings: { title: "Настройки", description: "Параметры анализа, хранения данных и моделей." },
+};
+
 const navItems: Array<{ id: ActivePage; label: string; icon: typeof LayoutDashboard; group: string; writeOnly?: boolean }> = [
   { id: "overview", label: "Обзор", icon: LayoutDashboard, group: "Оперативный центр" },
   { id: "cameras", label: "Камеры", icon: Camera, group: "Оперативный центр" },
@@ -51,7 +59,7 @@ export function AppShell({ activePage, children, loading, theme, user, onNavigat
           <div className="brand-mark"><ShieldCheck aria-hidden="true" /></div>
           <div>
             <span>OSV-PC</span>
-            <small>VISION CONTROL</small>
+            <small>ПОДСЧЁТ ЛЮДЕЙ</small>
           </div>
         </div>
 
@@ -75,19 +83,13 @@ export function AppShell({ activePage, children, loading, theme, user, onNavigat
             );
           })}
         </nav>
-        <div className="sidebar-footer">
-          <span className="status-dot" />
-          <span>Система онлайн</span>
-          <small>v0.1 live</small>
-        </div>
       </aside>
 
       <section className={`workspace workspace--${activePage}`}>
         <header className="topbar">
           <div>
-            <span className="topbar-kicker">{activePage === "overview" ? "OSV-PC / LIVE" : "LIVE / CONTROL ROOM"}</span>
-            <h1>{activePage === "overview" ? "Мониторинг" : "Центр мониторинга"}</h1>
-            <p>Компьютерное зрение, люди и события безопасности</p>
+            <h1>{pageInfo[activePage].title}</h1>
+            <p>{pageInfo[activePage].description}</p>
           </div>
           <div className="topbar-actions">
             <div className="role-chip">

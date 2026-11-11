@@ -38,9 +38,9 @@ function statusLabel(status: string): string {
 }
 
 const thresholdPresets = {
-  Demo: { person_confidence_threshold: 0.5, face_recognition_threshold: 0.55 },
-  Balanced: { person_confidence_threshold: 0.65, face_recognition_threshold: 0.65 },
-  Strict: { person_confidence_threshold: 0.8, face_recognition_threshold: 0.75 },
+  "Тестовый": { person_confidence_threshold: 0.5, face_recognition_threshold: 0.55 },
+  "Сбалансированный": { person_confidence_threshold: 0.65, face_recognition_threshold: 0.65 },
+  "Строгий": { person_confidence_threshold: 0.8, face_recognition_threshold: 0.75 },
 } as const;
 
 export function SettingsPage({
@@ -76,13 +76,6 @@ export function SettingsPage({
 
   return (
     <section className="page-stack">
-      <div className="section-heading">
-        <div>
-          <h2>Настройки</h2>
-          <p>Управляйте порогами, хранением данных и runtime metadata локального демо.</p>
-        </div>
-      </div>
-
       <section className="settings-overview" aria-label="Сводка системы">
         <article className="settings-overview__card">
           <span>Профиль детекции</span>
@@ -92,7 +85,7 @@ export function SettingsPage({
         <article className="settings-overview__card settings-overview__card--accent">
           <span>Распознавание лиц</span>
           <strong>{models.length ? "Активно" : "Ожидание"}</strong>
-          <small>{models.length} моделей в registry</small>
+          <small>Зарегистрировано моделей: {models.length}</small>
         </article>
         <article className="settings-overview__card">
           <span>Хранение событий</span>
@@ -279,7 +272,7 @@ export function SettingsPage({
           <div className="events-table" role="table" aria-label="Модели">
             <div className="events-row events-head models-row" role="row">
               <span>Название</span>
-              <span>Runtime</span>
+                  <span>Среда выполнения</span>
               <span>Версия</span>
               <span>Активна</span>
               <span>Создана</span>

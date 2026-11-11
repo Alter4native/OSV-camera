@@ -38,13 +38,6 @@ export function CamerasPage({ cameras, role, onCreate, onUpdate }: CamerasPagePr
 
   return (
     <section className="page-stack">
-      <div className="section-heading">
-        <div>
-          <h2>Камеры</h2>
-          <p>Управляйте локальной веб-камерой, RTSP-источниками, FPS обработки и состоянием подключения.</p>
-        </div>
-      </div>
-
       <div className="camera-grid">
         <article className="panel camera-list-panel">
           <div className="panel-header">
@@ -62,7 +55,7 @@ export function CamerasPage({ cameras, role, onCreate, onUpdate }: CamerasPagePr
                   <div className="camera-card__preview">
                     <span className={`camera-card__signal camera-card__signal--${camera.state}`} />
                     <Camera aria-hidden="true" />
-                    <span>{camera.state === "online" ? "LIVE SOURCE" : "NO SIGNAL"}</span>
+                    <span>{camera.state === "online" ? "Сигнал получен" : "Нет сигнала"}</span>
                   </div>
                   <div className="camera-card__main">
                     <div>

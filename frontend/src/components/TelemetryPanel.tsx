@@ -48,9 +48,8 @@ export function TelemetryPanel({ telemetry, history, visibleTracks, cameraActive
     <section className="telemetry-panel" aria-label="Телеметрия AI-детектора">
       <header className="telemetry-header">
         <div>
-          <span className="telemetry-kicker"><Activity size={15} /> AI MONITOR</span>
-          <h2>Телеметрия обработки</h2>
-          <p>Скорость и качество текущего потока с веб-камеры</p>
+          <h2>Статистика обработки</h2>
+          <p>Скорость, задержка и качество кадров камеры</p>
         </div>
         <span className={`telemetry-state ${cameraActive ? "is-live" : ""}`}>
           <i aria-hidden="true" /> {liveState}
@@ -87,7 +86,7 @@ export function TelemetryPanel({ telemetry, history, visibleTracks, cameraActive
           <div className="telemetry-progress" role="progressbar" aria-label="Средняя уверенность детекций" aria-valuenow={Math.round(confidence * 100)} aria-valuemin={0} aria-valuemax={100}>
             <span style={{ width: `${confidence * 100}%` }} />
           </div>
-          <span className="telemetry-note">среднее по последнему кадру</span>
+          <span className="telemetry-note">средняя уверенность по кадру</span>
         </article>
 
         <article className="telemetry-card telemetry-card--runtime">
@@ -105,16 +104,16 @@ export function TelemetryPanel({ telemetry, history, visibleTracks, cameraActive
           <div className="quality-bars">
             <span style={{ width: `${Math.min(100, (quality?.sharpness ?? 0) / 8)}%` }} />
           </div>
-          <span className="telemetry-note">sharpness {quality ? Math.round(quality.sharpness) : "—"} · лицо {quality?.face_size_px || "—"} px</span>
+          <span className="telemetry-note">резкость {quality ? Math.round(quality.sharpness) : "—"} · лицо {quality?.face_size_px || "—"} px</span>
         </article>
       </div>
 
       <footer className="telemetry-footer">
         <div><Boxes size={15} /><span>Треки в кадре</span><strong>{visibleTracks}</strong></div>
         <div><Activity size={15} /><span>Кадров обработано</span><strong>{telemetry?.frames_processed ?? 0}</strong></div>
-        <div><Cpu size={15} /><span>Runtime</span><strong>Ultralytics</strong></div>
+        <div><Cpu size={15} /><span>Среда</span><strong>Ultralytics</strong></div>
         <div><ScanLine size={15} /><span>Стабильность</span><strong>{recognition?.stability ?? "—"}</strong></div>
-        <div><Activity size={15} /><span>Dropped frames</span><strong>{quality?.dropped_frames ?? 0}</strong></div>
+        <div><Activity size={15} /><span>Пропущено кадров</span><strong>{quality?.dropped_frames ?? 0}</strong></div>
       </footer>
     </section>
   );

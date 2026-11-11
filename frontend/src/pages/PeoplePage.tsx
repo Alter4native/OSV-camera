@@ -37,13 +37,6 @@ export function PeoplePage({ persons, onCreate, onUploadPhoto, onDeleteEmbedding
 
   return (
     <section className="page-stack">
-      <div className="section-heading">
-        <div>
-          <h2>Люди</h2>
-          <p>Управляйте профилями для распознавания лиц. Сырые embeddings не показываются в интерфейсе.</p>
-        </div>
-      </div>
-
       <div className="content-grid content-grid--balanced">
         <article className="panel">
           <div className="panel-header">
@@ -68,13 +61,13 @@ export function PeoplePage({ persons, onCreate, onUploadPhoto, onDeleteEmbedding
                   </div>
                   <button className="text-button danger-text" type="button" onClick={() => onDeleteEmbeddings(person.person_id)}>
                     <Trash2 aria-hidden="true" />
-                    Удалить embeddings
+                    Удалить векторные данные
                   </button>
                 </div>
               ))}
             </div>
           ) : (
-            <EmptyState title="Профилей пока нет" body="Создайте профиль, загрузите фото лица и зарегистрируйте metadata embedding." />
+            <EmptyState title="Профилей пока нет" body="Создайте профиль и добавьте фотографию для регистрации в системе распознавания." />
           )}
         </article>
 

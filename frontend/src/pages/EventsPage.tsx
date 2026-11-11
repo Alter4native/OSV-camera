@@ -40,13 +40,6 @@ export function EventsPage({ cameras, events, filters, snapshot, onApplyFilters,
 
   return (
     <section className="page-stack">
-      <div className="section-heading">
-        <div>
-          <h2>События</h2>
-          <p>Фильтруйте детекции людей, статусы камер, входы в зоны и обновления счетчика людей.</p>
-        </div>
-      </div>
-
       <article className="panel">
         <form className="filter-bar" onSubmit={handleSubmit}>
           <label>
