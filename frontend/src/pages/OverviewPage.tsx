@@ -10,6 +10,8 @@ import {
   Play,
   ScanLine,
   Video,
+  Volume2,
+  VolumeX,
 } from "lucide-react";
 
 import { WebcamDetectionSocket } from "../api/client";
@@ -91,7 +93,11 @@ export function OverviewPage({
   const [portraitCamera, setPortraitCamera] = useState(false);
   const [telemetryHistory, setTelemetryHistory] = useState<InferenceTelemetry[]>([]);
   const [trackingActive, setTrackingActive] = useState(false);
+  const [soundEnabled, setSoundEnabled] = useState(() => localStorage.getItem("osvpc-detection-sound") !== "off");
   const [fullscreen, setFullscreen] = useState(false);
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const previousPersonCountRef = useRef(0);
+  const lastToneAtRef = useRef(0);
   const selectedCamera = cameraDevices.find((device) => device.deviceId === selectedDeviceId);
   const displayedCameraState = cameraReady ? "online" : "stopped";
   const displayedCameraName = selectedCamera?.label || "Камера браузера";
@@ -127,6 +133,31 @@ export function OverviewPage({
   }, [detection]);
 
   useEffect(() => {
+    if (!detection) return;
+    const now = performance.now();
+    const personAppeared = detection.person_count > previousPersonCountRef.current;
+    previousPersonCountRef.current = detection.person_count;
+    if (!soundEnabled || !personAppeared || now - lastToneAtRef.current < 1800) return;
+    lastToneAtRef.current = now;
+
+    const context = audioContextRef.current;
+    if (!context || context.state !== "running") return;
+    const start = context.currentTime;
+    [740, 988].forEach((frequency, index) => {
+      const oscillator = context.createOscillator();
+      const gain = context.createGain();
+      oscillator.type = "sine";
+      oscillator.frequency.value = frequency;
+      gain.gain.setValueAtTime(0.0001, start + index * 0.1);
+      gain.gain.exponentialRampToValueAtTime(0.035, start + index * 0.1 + 0.025);
+      gain.gain.exponentialRampToValueAtTime(0.0001, start + index * 0.1 + 0.22);
+      oscillator.connect(gain).connect(context.destination);
+      oscillator.start(start + index * 0.1);
+      oscillator.stop(start + index * 0.1 + 0.24);
+    });
+  }, [detection, soundEnabled]);
+
+  useEffect(() => {
     void loadCameraDevices();
     navigator.mediaDevices?.addEventListener?.("devicechange", loadCameraDevices);
     return () => {
@@ -140,6 +171,8 @@ export function OverviewPage({
         window.clearTimeout(trackingTimeoutRef.current);
       }
       streamRef.current?.getTracks().forEach((track) => track.stop());
+      void audioContextRef.current?.close();
+      audioContextRef.current = null;
     };
   }, []);
 
@@ -179,6 +212,17 @@ export function OverviewPage({
             frameRate: { ideal: 30, min: 15 },
           }
         : { width: { ideal: 1920 }, height: { ideal: 1080 }, frameRate: { ideal: 30, min: 15 } };
+      const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+      if (AudioContextClass) {
+        try {
+          audioContextRef.current ??= new AudioContextClass();
+          void audioContextRef.current.resume().catch(() => {
+            audioContextRef.current = null;
+          });
+        } catch {
+          audioContextRef.current = null;
+        }
+      }
       const stream = await navigator.mediaDevices.getUserMedia({ video, audio: false });
       streamRef.current = stream;
       stream.getVideoTracks().forEach((track) => {
@@ -215,6 +259,18 @@ export function OverviewPage({
     }
     await document.documentElement.requestFullscreen();
     setFullscreen(true);
+  }
+
+  function toggleDetectionSound() {
+    setSoundEnabled((enabled) => {
+      const next = !enabled;
+      try {
+        localStorage.setItem("osvpc-detection-sound", next ? "on" : "off");
+      } catch {
+        // Keep the current-page control available when browser storage is disabled.
+      }
+      return next;
+    });
   }
 
   function stopBrowserCamera() {
@@ -470,6 +526,16 @@ export function OverviewPage({
             >
               {trackingActive ? <Pause aria-hidden="true" /> : <Play aria-hidden="true" />}
               {loading ? "Запускаем..." : trackingActive ? "Остановить анализ" : "Начать анализ"}
+            </button>
+            <button
+              className={`icon-button sound-toggle-button ${soundEnabled ? "is-enabled" : ""}`}
+              type="button"
+              onClick={toggleDetectionSound}
+              aria-label={soundEnabled ? "Выключить звук обнаружения" : "Включить звук обнаружения"}
+              aria-pressed={soundEnabled}
+              title={soundEnabled ? "Звук обнаружения включён" : "Звук обнаружения выключен"}
+            >
+              {soundEnabled ? <Volume2 aria-hidden="true" /> : <VolumeX aria-hidden="true" />}
             </button>
             <button
               className="icon-button fullscreen-toggle"

@@ -3035,6 +3035,17 @@ button:focus-visible {
   min-width: 44px;
 }
 
+.sound-toggle-button {
+  width: 44px;
+  min-width: 44px;
+}
+
+.sound-toggle-button.is-enabled {
+  color: #167b69;
+  background: #eff8f4;
+  border-color: #cfe7db;
+}
+
 .detection-count {
   display: grid;
   min-width: 116px;
@@ -3191,7 +3202,7 @@ button:focus-visible {
 
   .live-controls__buttons {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) 44px;
+    grid-template-columns: minmax(0, 1fr) 44px 44px;
     gap: 7px;
   }
 
@@ -3212,6 +3223,14 @@ button:focus-visible {
   }
 
   .fullscreen-toggle {
+    grid-column: 3;
+    grid-row: 1;
+    width: 44px;
+    min-width: 44px;
+    padding: 0 !important;
+  }
+
+  .sound-toggle-button {
     grid-column: 2;
     grid-row: 1;
     width: 44px;
