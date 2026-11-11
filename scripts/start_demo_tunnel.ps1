@@ -158,19 +158,17 @@ for ($i = 0; $i -lt 120; $i++) {
     }
 
     if ($candidateUrl) {
-        try {
-            Invoke-WebRequest -UseBasicParsing "$candidateUrl/api/health" -TimeoutSec 5 | Out-Null
+        if (Test-Endpoint "$candidateUrl/api/health") {
             $tunnelUrl = $candidateUrl
             break
-        } catch {
-            if ($i -eq 0 -or $i % 10 -eq 0) {
-                Write-Step "Tunnel candidate is not reachable yet: $candidateUrl"
-            }
+        } elseif ($i -eq 0 -or $i % 10 -eq 0) {
+            Write-Step "Tunnel candidate is not reachable yet: $candidateUrl"
         }
     }
 
     if ($process.HasExited) {
-        Write-Error "cloudflared stopped before creating tunnel. Check $errFile"
+        $recentLog = if (Test-Path $errFile) { (Get-Content $errFile -Tail 20) -join [Environment]::NewLine } else { "No cloudflared error log was created." }
+        Write-Error "cloudflared stopped before the tunnel passed its health check. Check $errFile. Recent log:`n$recentLog"
     }
 }
 
