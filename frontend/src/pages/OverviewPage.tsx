@@ -9,6 +9,7 @@ import {
   Pause,
   Play,
   ScanLine,
+  SwitchCamera,
   Video,
   Volume2,
   VolumeX,
@@ -89,6 +90,7 @@ export function OverviewPage({
   const [scanSaveError, setScanSaveError] = useState<string | null>(null);
   const [cameraDevices, setCameraDevices] = useState<MediaDeviceInfo[]>([]);
   const [selectedDeviceId, setSelectedDeviceId] = useState("");
+  const [facingMode, setFacingMode] = useState<"user" | "environment">("user");
   const [videoAspectRatio, setVideoAspectRatio] = useState("16 / 9");
   const [portraitCamera, setPortraitCamera] = useState(false);
   const [telemetryHistory, setTelemetryHistory] = useState<InferenceTelemetry[]>([]);
@@ -191,7 +193,7 @@ export function OverviewPage({
     }
   }
 
-  async function startBrowserCamera() {
+  async function startBrowserCamera(requestedDeviceId?: string, requestedFacingMode?: "user" | "environment"): Promise<boolean> {
     setCameraError(null);
     try {
       trackingActiveRef.current = false;
@@ -204,14 +206,21 @@ export function OverviewPage({
       setDisplayDetections([]);
       setTelemetryHistory([]);
       setTrackingActive(false);
-      const video: MediaTrackConstraints = selectedDeviceId
+      const activeDeviceId = requestedDeviceId ?? selectedDeviceId;
+      const activeFacingMode = requestedFacingMode ?? facingMode;
+      const video: MediaTrackConstraints = activeDeviceId
         ? {
-            deviceId: { exact: selectedDeviceId },
+            deviceId: { exact: activeDeviceId },
             width: { ideal: 1920 },
             height: { ideal: 1080 },
             frameRate: { ideal: 30, min: 15 },
           }
-        : { width: { ideal: 1920 }, height: { ideal: 1080 }, frameRate: { ideal: 30, min: 15 } };
+        : {
+            facingMode: { ideal: activeFacingMode },
+            width: { ideal: 1920 },
+            height: { ideal: 1080 },
+            frameRate: { ideal: 30, min: 15 },
+          };
       const AudioContextClass = window.AudioContext || window.webkitAudioContext;
       if (AudioContextClass) {
         try {
@@ -244,10 +253,12 @@ export function OverviewPage({
       }
       setCameraReady(true);
       await loadCameraDevices();
+      return true;
     } catch (error) {
       const message = error instanceof Error ? error.message : "Не удалось открыть веб-камеру";
       setCameraError(message);
       setCameraReady(false);
+      return false;
     }
   }
 
@@ -271,6 +282,39 @@ export function OverviewPage({
       }
       return next;
     });
+  }
+
+  async function flipCamera() {
+    let devices = cameraDevices;
+    try {
+      devices = (await navigator.mediaDevices.enumerateDevices()).filter((device) => device.kind === "videoinput");
+      setCameraDevices(devices);
+    } catch {
+      // If device labels are unavailable, the facingMode constraint can still switch mobile cameras.
+    }
+
+    const currentIndex = devices.findIndex((device) => device.deviceId === selectedDeviceId);
+    const currentDevice = devices[currentIndex];
+    const isRear = /back|rear|environment|задн|основн/i.test(currentDevice?.label ?? "") ||
+      (!/front|user|selfie|передн|фронт|селфи/i.test(currentDevice?.label ?? "") && facingMode === "environment");
+    const nextFacingMode = isRear ? "user" : "environment";
+    const wantedDevice = devices.find((device) =>
+      nextFacingMode === "environment"
+        ? /back|rear|environment|задн|основн/i.test(device.label)
+        : /front|user|selfie|передн|фронт|селфи/i.test(device.label),
+    );
+    const nextDevice = wantedDevice ?? (devices.length > 1 && currentIndex >= 0 ? devices[(currentIndex + 1) % devices.length] : undefined);
+
+    setFacingMode(nextFacingMode);
+    setSelectedDeviceId(nextDevice?.deviceId ?? "");
+    if (cameraReady) {
+      const resumeAnalysis = trackingActive;
+      stopBrowserCamera();
+      const restarted = await startBrowserCamera(nextDevice?.deviceId ?? "", nextFacingMode);
+      if (restarted && resumeAnalysis) {
+        await detectBrowserFrame();
+      }
+    }
   }
 
   function stopBrowserCamera() {
@@ -512,11 +556,21 @@ export function OverviewPage({
             <button
               className={`secondary-button camera-toggle ${cameraReady ? "is-connected" : ""}`}
               type="button"
-              onClick={cameraReady ? stopBrowserCamera : startBrowserCamera}
+              onClick={cameraReady ? stopBrowserCamera : () => void startBrowserCamera()}
               disabled={loading}
             >
               <Video aria-hidden="true" />
               {cameraReady ? "Отключить камеру" : "Включить камеру"}
+            </button>
+            <button
+              className="icon-button camera-flip-button"
+              type="button"
+              onClick={() => void flipCamera()}
+              aria-label={`Переключить на ${facingMode === "user" ? "заднюю" : "переднюю"} камеру`}
+              title={`Переключить на ${facingMode === "user" ? "заднюю" : "переднюю"} камеру`}
+              disabled={loading}
+            >
+              <SwitchCamera aria-hidden="true" />
             </button>
             <button
               className={`primary-button tracking-toggle ${trackingActive ? "is-running" : ""}`}

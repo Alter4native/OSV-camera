@@ -128,14 +128,14 @@ export function EventsPage({ cameras, events, filters, snapshot, onApplyFilters,
             </div>
             {events.map((event) => (
               <div className="events-row" role="row" key={event.event_id}>
-                <span className="event-time">{formatDateTime(event.timestamp)}</span>
-                <span className="event-type"><i className={`event-marker event-marker--${event.event_type}`} />{eventTypeLabel(event.event_type)}</span>
-                <span className="event-camera">{cameraById.get(event.camera_id) ?? event.camera_id}</span>
-                <span className="event-confidence">{formatPercent(event.confidence)}</span>
-                <span>
+                <span className="event-time" data-label="Время">{formatDateTime(event.timestamp)}</span>
+                <span className="event-type" data-label="Тип"><i className={`event-marker event-marker--${event.event_type}`} />{eventTypeLabel(event.event_type)}</span>
+                <span className="event-camera" data-label="Камера">{cameraById.get(event.camera_id) ?? event.camera_id}</span>
+                <span className="event-confidence" data-label="Уверенность">{formatPercent(event.confidence)}</span>
+                <span data-label="Снимок">
                   <StatusBadge tone={snapshotTone(event)}>{event.snapshot_url ? "закрытый" : "нет"}</StatusBadge>
                 </span>
-                <span>
+                <span data-label="Действие">
                   <button
                     className="text-button"
                     type="button"

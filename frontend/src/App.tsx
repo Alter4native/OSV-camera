@@ -66,6 +66,16 @@ function errorMessage(error: unknown): string {
 
 export function App() {
   const [session, setSession] = useState<Session | null>(() => loadSession());
+  const [theme, setTheme] = useState<"light" | "dark">(() => {
+    let savedTheme: string | null = null;
+    try {
+      savedTheme = localStorage.getItem("osvpc-theme");
+    } catch {
+      // Fall back to the device preference if browser storage is disabled.
+    }
+    if (savedTheme === "light" || savedTheme === "dark") return savedTheme;
+    return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+  });
   const [activePage, setActivePage] = useState<ActivePage>("overview");
   const [loading, setLoading] = useState(false);
   const [loginError, setLoginError] = useState<string | null>(null);
@@ -82,6 +92,15 @@ export function App() {
   const [aiHealth, setAiHealth] = useState<unknown>(null);
   const [vectorStatus, setVectorStatus] = useState<unknown>(null);
   const [embeddingStatus, setEmbeddingStatus] = useState<unknown>(null);
+
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme;
+    try {
+      localStorage.setItem("osvpc-theme", theme);
+    } catch {
+      // Theme still applies for the current session without persistent storage.
+    }
+  }, [theme]);
 
   const loadDashboard = useCallback(async () => {
     if (!session) {
@@ -319,17 +338,19 @@ export function App() {
   }
 
   if (!session) {
-    return <LoginScreen error={loginError} loading={loading} onLogin={handleLogin} />;
+    return <LoginScreen error={loginError} loading={loading} theme={theme} onLogin={handleLogin} onToggleTheme={() => setTheme((current) => current === "dark" ? "light" : "dark")} />;
   }
 
   return (
     <AppShell
       activePage={activePage}
       loading={loading}
+      theme={theme}
       user={session.user}
       onLogout={handleLogout}
       onNavigate={setActivePage}
       onRefresh={loadDashboard}
+      onToggleTheme={() => setTheme((current) => current === "dark" ? "light" : "dark")}
     >
       {notice ? <div className="notice-banner">{notice}</div> : null}
 

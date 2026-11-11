@@ -4,9 +4,11 @@ import {
   Gauge,
   LayoutDashboard,
   LogOut,
+  Moon,
   RefreshCw,
   Settings,
   ShieldCheck,
+  Sun,
   Users,
 } from "lucide-react";
 
@@ -27,17 +29,19 @@ type AppShellProps = {
   activePage: ActivePage;
   children: React.ReactNode;
   loading: boolean;
+  theme: "light" | "dark";
   user: User;
   onNavigate: (page: ActivePage) => void;
   onRefresh: () => void;
   onLogout: () => void;
+  onToggleTheme: () => void;
 };
 
 function visibleNavItems(role: Role) {
   return navItems.filter((item) => !item.writeOnly || canWrite(role));
 }
 
-export function AppShell({ activePage, children, loading, user, onNavigate, onRefresh, onLogout }: AppShellProps) {
+export function AppShell({ activePage, children, loading, theme, user, onNavigate, onRefresh, onLogout, onToggleTheme }: AppShellProps) {
   const navigationItems = visibleNavItems(user.role);
 
   return (
@@ -93,7 +97,17 @@ export function AppShell({ activePage, children, loading, user, onNavigate, onRe
             </div>
             <button className="secondary-button refresh-button" type="button" onClick={onRefresh} disabled={loading}>
               <RefreshCw className={loading ? "refresh-icon is-spinning" : "refresh-icon"} aria-hidden="true" />
-              {loading ? "Обновляем..." : "Обновить"}
+              <span>{loading ? "Обновляем..." : "Обновить"}</span>
+            </button>
+            <button
+              className="icon-button theme-toggle"
+              type="button"
+              onClick={onToggleTheme}
+              aria-label={theme === "dark" ? "Включить светлую тему" : "Включить тёмную тему"}
+              aria-pressed={theme === "dark"}
+              title={theme === "dark" ? "Светлая тема" : "Тёмная тема"}
+            >
+              {theme === "dark" ? <Sun aria-hidden="true" /> : <Moon aria-hidden="true" />}
             </button>
             <button className="icon-button" type="button" onClick={onLogout} aria-label="Выйти">
               <LogOut aria-hidden="true" />

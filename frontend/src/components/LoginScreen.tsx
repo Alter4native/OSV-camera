@@ -1,13 +1,15 @@
 import { FormEvent, useState } from "react";
-import { Lock, ShieldCheck } from "lucide-react";
+import { Lock, Moon, ShieldCheck, Sun } from "lucide-react";
 
 type LoginScreenProps = {
   error: string | null;
   loading: boolean;
+  theme: "light" | "dark";
   onLogin: (username: string, password: string) => Promise<void>;
+  onToggleTheme: () => void;
 };
 
-export function LoginScreen({ error, loading, onLogin }: LoginScreenProps) {
+export function LoginScreen({ error, loading, theme, onLogin, onToggleTheme }: LoginScreenProps) {
   const [username, setUsername] = useState("admin");
   const [password, setPassword] = useState("admin");
 
@@ -18,6 +20,16 @@ export function LoginScreen({ error, loading, onLogin }: LoginScreenProps) {
 
   return (
     <main className="login-screen">
+      <button
+        className="icon-button login-theme-toggle"
+        type="button"
+        onClick={onToggleTheme}
+        aria-label={theme === "dark" ? "Включить светлую тему" : "Включить тёмную тему"}
+        aria-pressed={theme === "dark"}
+        title={theme === "dark" ? "Светлая тема" : "Тёмная тема"}
+      >
+        {theme === "dark" ? <Sun aria-hidden="true" /> : <Moon aria-hidden="true" />}
+      </button>
       <section className="login-panel">
         <div className="login-brand">
           <ShieldCheck aria-hidden="true" />
