@@ -4,6 +4,7 @@ import {
   Gauge,
   LayoutDashboard,
   LogOut,
+  RefreshCw,
   Settings,
   ShieldCheck,
   Sparkles,
@@ -38,6 +39,8 @@ function visibleNavItems(role: Role) {
 }
 
 export function AppShell({ activePage, children, loading, user, onNavigate, onRefresh, onLogout }: AppShellProps) {
+  const navigationItems = visibleNavItems(user.role);
+
   return (
     <main className="app-shell">
       <aside className="sidebar" aria-label="Основная навигация">
@@ -49,8 +52,8 @@ export function AppShell({ activePage, children, loading, user, onNavigate, onRe
           </div>
         </div>
 
-        <nav className="nav-list">
-          {visibleNavItems(user.role).map((item, index, visibleItems) => {
+        <nav className={`nav-list nav-list--${navigationItems.length}`}>
+          {navigationItems.map((item, index, visibleItems) => {
             const Icon = item.icon;
             const showGroup = index === 0 || visibleItems[index - 1].group !== item.group;
             return (
@@ -59,6 +62,7 @@ export function AppShell({ activePage, children, loading, user, onNavigate, onRe
                 <button
                   className={`nav-item ${activePage === item.id ? "nav-item--active" : ""}`}
                   type="button"
+                  aria-current={activePage === item.id ? "page" : undefined}
                   onClick={() => onNavigate(item.id)}
                 >
                   <Icon aria-hidden="true" />
@@ -89,8 +93,9 @@ export function AppShell({ activePage, children, loading, user, onNavigate, onRe
               <span>{user.username}</span>
               <strong>{user.role}</strong>
             </div>
-            <button className="secondary-button" type="button" onClick={onRefresh} disabled={loading}>
-              {loading ? "Обновление" : "Обновить"}
+            <button className="secondary-button refresh-button" type="button" onClick={onRefresh} disabled={loading}>
+              <RefreshCw className={loading ? "refresh-icon is-spinning" : "refresh-icon"} aria-hidden="true" />
+              {loading ? "Обновляем..." : "Обновить"}
             </button>
             <button className="icon-button" type="button" onClick={onLogout} aria-label="Выйти">
               <LogOut aria-hidden="true" />
@@ -98,7 +103,9 @@ export function AppShell({ activePage, children, loading, user, onNavigate, onRe
           </div>
         </header>
 
-        {children}
+        <div className="page-transition" key={activePage}>
+          {children}
+        </div>
       </section>
     </main>
   );
