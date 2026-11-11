@@ -1,5 +1,19 @@
 import { useEffect, useRef, useState } from "react";
-import { Activity, Camera, Crosshair, Gauge, Play, Server, Video, Volume2, VolumeX } from "lucide-react";
+import {
+  Activity,
+  Camera,
+  Crosshair,
+  Gauge,
+  Maximize2,
+  Minimize2,
+  Play,
+  ScanLine,
+  Server,
+  Sparkles,
+  Video,
+  Volume2,
+  VolumeX,
+} from "lucide-react";
 
 import { WebcamDetectionSocket } from "../api/client";
 import { EmptyState } from "../components/EmptyState";
@@ -119,6 +133,9 @@ export function OverviewPage({
   const [portraitCamera, setPortraitCamera] = useState(false);
   const [telemetryHistory, setTelemetryHistory] = useState<InferenceTelemetry[]>([]);
   const [soundEnabled, setSoundEnabled] = useState(() => localStorage.getItem("osvpc-detection-sound") !== "off");
+  const [demoMode, setDemoMode] = useState(false);
+  const [heatmapEnabled, setHeatmapEnabled] = useState(false);
+  const [fullscreen, setFullscreen] = useState(false);
   const audioContextRef = useRef<AudioContext | null>(null);
   const previousPersonCountRef = useRef(0);
   const lastToneAtRef = useRef(0);
@@ -136,6 +153,13 @@ export function OverviewPage({
   const [displayDetections, setDisplayDetections] = useState<
     Array<WebcamDetection["detections"][number] & { track_id?: number; hits?: number }>
   >([]);
+  const frameQuality = frame
+    ? frame.width >= 1280 && frame.height >= 720
+      ? "Высокое"
+      : frame.width >= 960
+        ? "Хорошее"
+        : "Низкое"
+    : "Ожидание";
 
   useEffect(() => {
     if (!detection) {
@@ -273,6 +297,16 @@ export function OverviewPage({
       }
       return next;
     });
+  }
+
+  async function toggleFullscreen() {
+    if (document.fullscreenElement) {
+      await document.exitFullscreen();
+      setFullscreen(false);
+      return;
+    }
+    await document.documentElement.requestFullscreen();
+    setFullscreen(true);
   }
 
   function stopBrowserCamera() {
@@ -462,7 +496,7 @@ export function OverviewPage({
 
   return (
     <>
-      <section className="dashboard-hero">
+      <section className={`dashboard-hero ${demoMode ? "dashboard-hero--demo" : ""}`}>
         <div>
           <span className="eyebrow">OSV-PC live</span>
           <h2>Детекция людей с веб-камеры</h2>
@@ -501,6 +535,13 @@ export function OverviewPage({
             {soundEnabled ? <Volume2 aria-hidden="true" /> : <VolumeX aria-hidden="true" />}
             <span>{soundEnabled ? "Звук включён" : "Звук выключен"}</span>
           </button>
+          <button className={`demo-toggle ${demoMode ? "is-active" : ""}`} type="button" onClick={() => setDemoMode((value) => !value)} aria-pressed={demoMode}>
+            <Sparkles aria-hidden="true" />
+            <span>{demoMode ? "Demo mode включён" : "Demo mode"}</span>
+          </button>
+          <button className="icon-button hero-fullscreen" type="button" onClick={() => void toggleFullscreen()} aria-label={fullscreen ? "Выйти из полноэкранного режима" : "Полный экран"}>
+            {fullscreen ? <Minimize2 aria-hidden="true" /> : <Maximize2 aria-hidden="true" />}
+          </button>
         </div>
       </section>
 
@@ -513,7 +554,10 @@ export function OverviewPage({
               <h2>Кадр веб-камеры</h2>
               <span>{detection ? `Кадр #${detection.frame_sequence} - ${formatDateTime(detection.timestamp)}` : "Ожидает запуска детекта"}</span>
             </div>
-            <StatusBadge tone={detection ? "good" : "neutral"}>{detection ? "готово" : "ожидание"}</StatusBadge>
+            <div className="panel-header__actions">
+              <span className="quality-pill"><ScanLine size={14} /> Качество: {frameQuality}</span>
+              <StatusBadge tone={detection ? "good" : "neutral"}>{detection ? "готово" : "ожидание"}</StatusBadge>
+            </div>
           </div>
           {scanSessionId ? (
             <div className="scan-storage-status" role="status">
@@ -530,6 +574,7 @@ export function OverviewPage({
           >
             <video className="detection-video" ref={videoRef} muted playsInline onLoadedMetadata={updateVideoAspectRatio} onResize={updateVideoAspectRatio} />
             {detection?.frame_image ? <img className="detection-image" src={detection.frame_image} alt="" /> : null}
+            {heatmapEnabled ? <div className="heatmap-overlay" aria-label="Тепловая карта активности" /> : null}
             <canvas ref={canvasRef} hidden />
             {frame ? (
               <span className="frame-size">
@@ -565,6 +610,12 @@ export function OverviewPage({
                 <span>Результаты YOLO появятся поверх схемы кадра.</span>
               </div>
             ) : null}
+          </div>
+          <div className="live-panel__toolbar">
+            <span><i className="live-indicator" /> {cameraReady ? "Поток в реальном времени" : "Поток не запущен"}</span>
+            <button className={`text-button ${heatmapEnabled ? "is-selected" : ""}`} type="button" onClick={() => setHeatmapEnabled((value) => !value)}>
+              <Activity size={15} /> {heatmapEnabled ? "Скрыть heatmap" : "Показать heatmap"}
+            </button>
           </div>
         </article>
 

@@ -117,7 +117,7 @@ export function EventsPage({ cameras, events, filters, snapshot, onApplyFilters,
         </div>
 
         {events.length ? (
-          <div className="events-table" role="table" aria-label="События">
+          <div className="events-table events-timeline" role="table" aria-label="События">
             <div className="events-row events-head" role="row">
               <span>Время</span>
               <span>Тип</span>
@@ -128,10 +128,10 @@ export function EventsPage({ cameras, events, filters, snapshot, onApplyFilters,
             </div>
             {events.map((event) => (
               <div className="events-row" role="row" key={event.event_id}>
-                <span>{formatDateTime(event.timestamp)}</span>
-                <span>{eventTypeLabel(event.event_type)}</span>
-                <span>{cameraById.get(event.camera_id) ?? event.camera_id}</span>
-                <span>{formatPercent(event.confidence)}</span>
+                <span className="event-time">{formatDateTime(event.timestamp)}</span>
+                <span className="event-type"><i className={`event-marker event-marker--${event.event_type}`} />{eventTypeLabel(event.event_type)}</span>
+                <span className="event-camera">{cameraById.get(event.camera_id) ?? event.camera_id}</span>
+                <span className="event-confidence">{formatPercent(event.confidence)}</span>
                 <span>
                   <StatusBadge tone={snapshotTone(event)}>{event.snapshot_url ? "закрытый" : "нет"}</StatusBadge>
                 </span>

@@ -23,8 +23,55 @@
   --ink-soft: #d7e1e8;
 }
 
+.events-timeline .events-row:not(.events-head) {
+  position: relative;
+  align-items: center;
+  min-height: 58px;
+  transition: background 160ms ease;
+}
+
+.events-timeline .events-row:not(.events-head):hover {
+  background: #f5f9fb;
+}
+
+.event-type {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-weight: 750;
+}
+
+.event-marker {
+  width: 9px;
+  height: 9px;
+  flex: 0 0 auto;
+  background: var(--cyan);
+  border-radius: 50%;
+  box-shadow: 0 0 0 4px rgba(23, 123, 143, 0.12);
+}
+
+.event-marker--unknown_person_detected,
+.event-marker--restricted_zone_entry {
+  background: var(--red);
+  box-shadow: 0 0 0 4px rgba(189, 59, 53, 0.12);
+}
+
+.event-marker--known_person_detected {
+  background: var(--green);
+  box-shadow: 0 0 0 4px rgba(22, 122, 74, 0.12);
+}
+
+.event-confidence {
+  color: var(--green);
+  font-weight: 800;
+}
+
 * {
   box-sizing: border-box;
+}
+
+@keyframes heatmap-breathe {
+  50% { opacity: 0.5; transform: scale(1.02); }
 }
 
 body {
@@ -68,6 +115,16 @@ textarea:disabled {
   border: 1px solid var(--line);
   border-radius: 8px;
   box-shadow: var(--shadow);
+  transition: transform 180ms ease, border-color 180ms ease, box-shadow 180ms ease;
+}
+
+.metric-tile:hover,
+.camera-card:hover,
+.person-card:hover,
+.quality-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(30, 99, 181, 0.38);
+  box-shadow: 0 18px 38px rgba(24, 35, 46, 0.12);
 }
 
 .login-brand,
@@ -400,6 +457,67 @@ button:focus-visible {
   background: #e5f5ed;
   border: 1px solid #c4e8d5;
   border-radius: 8px;
+  transition: transform 180ms ease, border-color 180ms ease, box-shadow 180ms ease;
+}
+
+.camera-card__preview {
+  position: relative;
+  display: grid;
+  min-height: 92px;
+  align-content: center;
+  justify-items: center;
+  gap: 8px;
+  color: #b6d2d7;
+  background:
+    linear-gradient(rgba(109, 205, 176, 0.08) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(109, 205, 176, 0.08) 1px, transparent 1px),
+    linear-gradient(135deg, #132630, #1d4147);
+  background-size: 22px 22px, 22px 22px, auto;
+  border-radius: 7px;
+  font-size: 10px;
+  font-weight: 850;
+  letter-spacing: 0.14em;
+}
+
+.camera-card__preview svg {
+  width: 24px;
+  height: 24px;
+  color: #8cebc0;
+}
+
+.camera-card__signal {
+  position: absolute;
+  width: 7px;
+  height: 7px;
+  margin: 10px 0 0 12px;
+  align-self: start;
+  justify-self: start;
+  background: #8b9ba0;
+  border-radius: 50%;
+}
+
+.camera-card__signal--online {
+  background: #64e5ad;
+  box-shadow: 0 0 0 5px rgba(100, 229, 173, 0.12), 0 0 13px rgba(100, 229, 173, 0.8);
+}
+
+.camera-card__health {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.camera-card__health span {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.camera-card__health strong {
+  color: var(--green);
+  font-size: 13px;
 }
 
 .role-chip strong {
@@ -490,6 +608,48 @@ button:focus-visible {
   box-shadow: var(--shadow);
   overflow: hidden;
   position: relative;
+}
+
+.dashboard-hero--demo {
+  border-color: rgba(183, 243, 107, 0.6);
+  box-shadow: 0 24px 70px rgba(27, 105, 91, 0.25), 0 0 0 1px rgba(183, 243, 107, 0.12);
+}
+
+.dashboard-hero--demo::before {
+  position: absolute;
+  inset: 12px;
+  border: 1px solid rgba(183, 243, 107, 0.14);
+  border-radius: 12px;
+  content: "";
+  pointer-events: none;
+}
+
+.demo-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
+  padding: 8px 12px;
+  color: #d7e1e8;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 10px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.demo-toggle.is-active {
+  color: #102019;
+  background: var(--lime);
+  border-color: var(--lime);
+  box-shadow: 0 0 22px rgba(183, 243, 107, 0.28);
+}
+
+.hero-fullscreen {
+  color: #e5f1f3;
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.18);
 }
 
 .dashboard-hero::after {
@@ -970,6 +1130,68 @@ button:focus-visible {
   background: #101820;
 }
 
+.heatmap-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  background:
+    radial-gradient(circle at 30% 65%, rgba(255, 78, 105, 0.48), transparent 18%),
+    radial-gradient(circle at 68% 42%, rgba(255, 190, 65, 0.4), transparent 24%),
+    radial-gradient(circle at 52% 82%, rgba(48, 213, 160, 0.34), transparent 26%);
+  mix-blend-mode: screen;
+  opacity: 0.75;
+  pointer-events: none;
+  animation: heatmap-breathe 3s ease-in-out infinite;
+}
+
+.live-panel__toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 12px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.live-panel__toolbar span:first-child {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.live-indicator,
+.camera-card__health i {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  background: var(--green);
+  border-radius: 50%;
+  box-shadow: 0 0 0 4px rgba(22, 122, 74, 0.1);
+}
+
+.text-button.is-selected {
+  color: var(--green);
+  font-weight: 800;
+}
+
+.panel-header__actions,
+.quality-pill {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.quality-pill {
+  padding: 6px 9px;
+  color: #2d6654;
+  background: #e8f7ef;
+  border: 1px solid #c6e8d5;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 800;
+}
+
 .detection-frame--portrait {
   width: min(100%, 520px);
   max-height: min(78vh, 760px);
@@ -1284,6 +1506,26 @@ button:focus-visible {
 .person-row {
   justify-content: start;
   grid-template-columns: 42px minmax(0, 1fr) auto;
+  transition: transform 180ms ease, border-color 180ms ease, box-shadow 180ms ease;
+}
+
+.person-card {
+  border: 1px solid transparent;
+}
+
+.person-row small {
+  display: block;
+  margin-top: 5px;
+  font-size: 11px;
+  font-weight: 750;
+}
+
+.profile-ready {
+  color: var(--green);
+}
+
+.profile-pending {
+  color: var(--amber);
 }
 
 .avatar {
@@ -1387,6 +1629,46 @@ button:focus-visible {
   line-height: 1.5;
 }
 
+.settings-overview {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.settings-overview__card {
+  display: grid;
+  gap: 7px;
+  min-height: 112px;
+  padding: 18px;
+  background: linear-gradient(135deg, #ffffff, #eef4f7);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  box-shadow: 0 12px 30px rgba(24, 35, 46, 0.06);
+}
+
+.settings-overview__card--accent {
+  color: #eafbf3;
+  background: linear-gradient(135deg, #12302d, #1d5b55);
+  border-color: #2f766c;
+}
+
+.settings-overview__card span,
+.settings-overview__card small {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 750;
+}
+
+.settings-overview__card--accent span,
+.settings-overview__card--accent small {
+  color: #a7d9c8;
+}
+
+.settings-overview__card strong {
+  font-size: 24px;
+  line-height: 1.1;
+}
+
 @media (max-width: 1100px) {
   .status-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1399,6 +1681,7 @@ button:focus-visible {
   .content-grid,
   .camera-grid,
   .quality-grid,
+  .settings-overview,
   .dashboard-grid,
   .content-grid--balanced {
     grid-template-columns: 1fr;

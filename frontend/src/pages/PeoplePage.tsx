@@ -55,13 +55,16 @@ export function PeoplePage({ persons, onCreate, onUploadPhoto, onDeleteEmbedding
           {persons.length ? (
             <div className="person-list">
               {persons.map((person) => (
-                <div className="person-row" key={person.person_id}>
+                <div className="person-row person-card" key={person.person_id}>
                   <div className="avatar">{person.display_name.slice(0, 1).toUpperCase()}</div>
                   <div>
                     <strong>{person.display_name}</strong>
                     <span>
                       {person.external_id ?? "Без внешнего ID"} - фото: {person.photo_count}
                     </span>
+                    <small className={person.photo_count > 0 ? "profile-ready" : "profile-pending"}>
+                      {person.photo_count > 0 ? "Профиль готов к распознаванию" : "Нужно добавить фото"}
+                    </small>
                   </div>
                   <button className="text-button danger-text" type="button" onClick={() => onDeleteEmbeddings(person.person_id)}>
                     <Trash2 aria-hidden="true" />

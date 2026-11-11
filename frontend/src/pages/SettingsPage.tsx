@@ -77,6 +77,24 @@ export function SettingsPage({
         </div>
       </div>
 
+      <section className="settings-overview" aria-label="Сводка системы">
+        <article className="settings-overview__card">
+          <span>Профиль детекции</span>
+          <strong>{settings?.processing_fps ?? "—"} FPS</strong>
+          <small>обработка видеопотока</small>
+        </article>
+        <article className="settings-overview__card settings-overview__card--accent">
+          <span>Распознавание лиц</span>
+          <strong>{models.length ? "Активно" : "Ожидание"}</strong>
+          <small>{models.length} моделей в registry</small>
+        </article>
+        <article className="settings-overview__card">
+          <span>Хранение событий</span>
+          <strong>{settings?.retention_days ?? "—"} дней</strong>
+          <small>retention policy</small>
+        </article>
+      </section>
+
       <article className="panel">
         <div className="panel-header">
           <div>

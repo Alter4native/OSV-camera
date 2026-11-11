@@ -59,12 +59,21 @@ export function CamerasPage({ cameras, role, onCreate, onUpdate }: CamerasPagePr
             <div className="camera-list">
               {cameras.map((camera) => (
                 <div className="camera-card" key={camera.camera_id}>
+                  <div className="camera-card__preview">
+                    <span className={`camera-card__signal camera-card__signal--${camera.state}`} />
+                    <Camera aria-hidden="true" />
+                    <span>{camera.state === "online" ? "LIVE SOURCE" : "NO SIGNAL"}</span>
+                  </div>
                   <div className="camera-card__main">
                     <div>
                       <h3>{camera.name}</h3>
                       <p>
                         {camera.source_type.toUpperCase()} - {camera.source_uri}
                       </p>
+                    </div>
+                    <div className="camera-card__health">
+                      <span><i /> Стабильность источника</span>
+                      <strong>{camera.state === "online" ? "98%" : "—"}</strong>
                     </div>
                     <StatusBadge tone={toneForState(camera.state)}>{stateLabel(camera.state)}</StatusBadge>
                   </div>
