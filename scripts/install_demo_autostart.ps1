@@ -11,7 +11,6 @@ if ($Remove) {
     exit 0
 }
 
-$repoRoot = Split-Path -Parent $PSScriptRoot
 $runnerPath = Join-Path $PSScriptRoot "start_demo_after_login.ps1"
 $powershellPath = Join-Path $env:SystemRoot "System32\WindowsPowerShell\v1.0\powershell.exe"
 
