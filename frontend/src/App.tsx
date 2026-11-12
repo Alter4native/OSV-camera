@@ -60,10 +60,7 @@ import type {
 } from "./types";
 import { canWrite } from "./utils/format";
 
-const FRONTEND_ONLY_MODE =
-  __FRONTEND_ONLY__ ||
-  import.meta.env.VITE_FRONTEND_ONLY === "true" ||
-  (import.meta.env.PROD && window.location.hostname.toLowerCase().endsWith(".vercel.app"));
+const FRONTEND_ONLY_MODE = new URLSearchParams(window.location.search).get("ui-preview") === "1";
 
 const defaultEmbeddingPayload = {
   embedding_model: "buffalo_l",
