@@ -47,6 +47,48 @@ type OverviewPageProps = {
   onClearDetection: () => void;
 };
 
+function personCountPhrase(count: number): string {
+  if (count <= 0) {
+    return "Анализ остановлен. Людей в кадре не было.";
+  }
+  if (count === 1) {
+    return "Анализ остановлен. Зафиксирован один человек в кадре.";
+  }
+
+  const lastTwoDigits = count % 100;
+  const lastDigit = count % 10;
+  const noun = lastTwoDigits >= 11 && lastTwoDigits <= 14
+    ? "человек"
+    : lastDigit >= 2 && lastDigit <= 4
+      ? "человека"
+      : "человек";
+  return `Анализ остановлен. Зафиксировано ${count} ${noun} в кадре.`;
+}
+
+function speakPersonCount(count: number): void {
+  if (typeof window === "undefined" || !("speechSynthesis" in window) || typeof SpeechSynthesisUtterance === "undefined") {
+    return;
+  }
+
+  const utterance = new SpeechSynthesisUtterance(personCountPhrase(count));
+  utterance.lang = "ru-RU";
+  utterance.rate = 0.94;
+  utterance.pitch = 1.04;
+  utterance.volume = 0.9;
+
+  const russianVoices = window.speechSynthesis.getVoices().filter((voice) => voice.lang.toLowerCase().startsWith("ru"));
+  const preferredVoice =
+    russianVoices.find((voice) => /natural|neural|premium|wavenet/i.test(voice.name)) ??
+    russianVoices.find((voice) => /google/i.test(voice.name)) ??
+    russianVoices[0];
+  if (preferredVoice) {
+    utterance.voice = preferredVoice;
+  }
+
+  window.speechSynthesis.cancel();
+  window.speechSynthesis.speak(utterance);
+}
+
 function readInferenceTelemetry(payload: unknown): InferenceTelemetry | null {
   if (!payload || typeof payload !== "object" || !("telemetry" in payload)) {
     return null;
@@ -101,6 +143,7 @@ export function OverviewPage({
   const [fullscreen, setFullscreen] = useState(false);
   const audioContextRef = useRef<AudioContext | null>(null);
   const previousPersonCountRef = useRef(0);
+  const lastPersonCountRef = useRef(0);
   const lastToneAtRef = useRef(0);
   const selectedCamera = cameraDevices.find((device) => device.deviceId === selectedDeviceId);
   const displayedCameraState = cameraReady ? "online" : "stopped";
@@ -122,6 +165,7 @@ export function OverviewPage({
     if (!detection) {
       return;
     }
+    lastPersonCountRef.current = Math.max(0, detection.person_count);
     setDisplayDetections(detection.tracks ?? detection.detections);
 
     const telemetry = detection.telemetry;
@@ -415,6 +459,7 @@ export function OverviewPage({
           try {
             const result = await socket.sendFrame(blob);
             if (trackingActiveRef.current && runId === trackingRunIdRef.current) {
+              lastPersonCountRef.current = Math.max(0, result.person_count);
               onRealtimeDetection(result);
               await saveScanSampleIfDue(blob, result);
             }
@@ -426,6 +471,7 @@ export function OverviewPage({
             if (trackingActiveRef.current && runId === trackingRunIdRef.current) {
               const result = await onDetectWebcam(blob, false);
               if (result && trackingActiveRef.current && runId === trackingRunIdRef.current) {
+                lastPersonCountRef.current = Math.max(0, result.person_count);
                 await saveScanSampleIfDue(blob, result);
               }
             }
@@ -434,6 +480,7 @@ export function OverviewPage({
           if (trackingActiveRef.current && runId === trackingRunIdRef.current) {
             const result = await onDetectWebcam(blob, false);
             if (result && trackingActiveRef.current && runId === trackingRunIdRef.current) {
+              lastPersonCountRef.current = Math.max(0, result.person_count);
               await saveScanSampleIfDue(blob, result);
             }
           }
@@ -463,6 +510,7 @@ export function OverviewPage({
     }
     const sessionId = createScanSessionId();
     scanSessionIdRef.current = sessionId;
+    lastPersonCountRef.current = 0;
     lastScanSaveAtRef.current = Number.NEGATIVE_INFINITY;
     setScanSessionId(sessionId);
     setSavedScanSamples(0);
@@ -470,7 +518,10 @@ export function OverviewPage({
     trackingActiveRef.current = true;
     setTrackingActive(true);
     const firstDetection = await onDetectWebcam(blob);
-    if (firstDetection) await saveScanSampleIfDue(blob, firstDetection, true);
+    if (firstDetection) {
+      lastPersonCountRef.current = Math.max(0, firstDetection.person_count);
+      await saveScanSampleIfDue(blob, firstDetection, true);
+    }
 
     try {
       const socket = new WebcamDetectionSocket();
@@ -485,6 +536,8 @@ export function OverviewPage({
   }
 
   function stopDetection() {
+    if (!trackingActiveRef.current) return;
+    const finalPersonCount = lastPersonCountRef.current;
     trackingActiveRef.current = false;
     trackingRunIdRef.current += 1;
     scanSessionIdRef.current = null;
@@ -495,6 +548,7 @@ export function OverviewPage({
       trackingTimeoutRef.current = null;
     }
     setTrackingActive(false);
+    speakPersonCount(finalPersonCount);
   }
 
   async function saveScanSampleIfDue(frameBlob: Blob, result: WebcamDetection, force = false) {
