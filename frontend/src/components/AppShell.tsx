@@ -39,6 +39,7 @@ type AppShellProps = {
   loading: boolean;
   theme: "light" | "dark";
   user: User;
+  previewMode: boolean;
   onNavigate: (page: ActivePage) => void;
   onRefresh: () => void;
   onLogout: () => void;
@@ -49,7 +50,7 @@ function visibleNavItems(role: Role) {
   return navItems.filter((item) => !item.writeOnly || canWrite(role));
 }
 
-export function AppShell({ activePage, children, loading, theme, user, onNavigate, onRefresh, onLogout, onToggleTheme }: AppShellProps) {
+export function AppShell({ activePage, children, loading, theme, user, previewMode, onNavigate, onRefresh, onLogout, onToggleTheme }: AppShellProps) {
   const navigationItems = visibleNavItems(user.role);
 
   return (
@@ -116,6 +117,16 @@ export function AppShell({ activePage, children, loading, theme, user, onNavigat
             </button>
           </div>
         </header>
+
+        {previewMode ? (
+          <div className="preview-mode-banner" role="status">
+            <span className="preview-mode-banner__indicator" aria-hidden="true" />
+            <div>
+              <strong>Визуальный preview</strong>
+              <span>Тестовые данные · API и камера отключены · изменения не сохраняются</span>
+            </div>
+          </div>
+        ) : null}
 
         <div className="page-transition" key={activePage}>
           {children}

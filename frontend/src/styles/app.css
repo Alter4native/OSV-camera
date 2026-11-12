@@ -3629,3 +3629,51 @@ textarea:hover {
     transition-duration: 0.01ms !important;
   }
 }
+
+.preview-mode-banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 18px 0 0;
+  padding: 12px 15px;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--green);
+  border-radius: 10px;
+  box-shadow: 0 5px 18px rgba(20, 35, 45, 0.04);
+}
+
+.preview-mode-banner > div {
+  display: grid;
+  gap: 3px;
+}
+
+.preview-mode-banner strong {
+  font-size: 13px;
+}
+
+.preview-mode-banner span:not(.preview-mode-banner__indicator) {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.preview-mode-banner__indicator {
+  width: 9px;
+  height: 9px;
+  flex: 0 0 auto;
+  background: var(--green);
+  border-radius: 50%;
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--green) 14%, transparent);
+}
+
+:root[data-theme="dark"] .preview-mode-banner {
+  background: var(--surface);
+  border-color: var(--line);
+  border-left-color: var(--lime);
+}
+
+:root[data-theme="dark"] .preview-mode-banner__indicator {
+  background: var(--lime);
+  box-shadow: 0 0 0 4px rgba(183, 243, 107, 0.12);
+}

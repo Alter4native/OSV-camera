@@ -2,6 +2,9 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 
 export default defineConfig({
+  define: {
+    __FRONTEND_ONLY__: JSON.stringify(process.env.VERCEL === "1"),
+  },
   plugins: [react()],
   server: {
     port: 5173,

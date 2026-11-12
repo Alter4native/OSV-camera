@@ -33,6 +33,19 @@ import { EventsPage } from "./pages/EventsPage";
 import { OverviewPage } from "./pages/OverviewPage";
 import { PeoplePage } from "./pages/PeoplePage";
 import { SettingsPage } from "./pages/SettingsPage";
+import {
+  previewAiStatus,
+  previewCameras,
+  previewEmbeddingStatus,
+  previewEvents,
+  previewModels,
+  previewPeople,
+  previewQuality,
+  previewSession,
+  previewSettings,
+  previewSnapshot,
+  previewVectorStatus,
+} from "./demo/mockData";
 import type {
   Camera,
   CameraPayload,
@@ -46,6 +59,11 @@ import type {
   WebcamDetection,
 } from "./types";
 import { canWrite } from "./utils/format";
+
+const FRONTEND_ONLY_MODE =
+  __FRONTEND_ONLY__ ||
+  import.meta.env.VITE_FRONTEND_ONLY === "true" ||
+  (import.meta.env.PROD && window.location.hostname.toLowerCase().endsWith(".vercel.app"));
 
 const defaultEmbeddingPayload = {
   embedding_model: "buffalo_l",
@@ -65,7 +83,9 @@ function errorMessage(error: unknown): string {
 }
 
 export function App() {
-  const [session, setSession] = useState<Session | null>(() => loadSession());
+  const [session, setSession] = useState<Session | null>(() =>
+    FRONTEND_ONLY_MODE ? previewSession : loadSession(),
+  );
   const [theme, setTheme] = useState<"light" | "dark">(() => {
     let savedTheme: string | null = null;
     try {
@@ -104,6 +124,29 @@ export function App() {
 
   const loadDashboard = useCallback(async () => {
     if (!session) {
+      return;
+    }
+
+    if (FRONTEND_ONLY_MODE) {
+      setNotice(null);
+      setCameras(previewCameras.map((camera) => ({ ...camera })));
+      setEvents(
+        previewEvents.filter((event) => {
+          if (eventFilters.cameraId && event.camera_id !== eventFilters.cameraId) return false;
+          if (eventFilters.eventType && event.event_type !== eventFilters.eventType) return false;
+          if (eventFilters.dateFrom && new Date(event.timestamp) < new Date(eventFilters.dateFrom)) return false;
+          if (eventFilters.dateTo && new Date(event.timestamp) > new Date(eventFilters.dateTo)) return false;
+          return true;
+        }),
+      );
+      setPersons(previewPeople.map((person) => ({ ...person })));
+      setModels(previewModels.map((model) => ({ ...model })));
+      setQuality(previewQuality);
+      setSettings({ ...previewSettings });
+      setAiHealth(previewAiStatus);
+      setVectorStatus(previewVectorStatus);
+      setEmbeddingStatus(previewEmbeddingStatus);
+      setLoading(false);
       return;
     }
 
@@ -193,6 +236,15 @@ export function App() {
   }, [activePage, session]);
 
   async function handleLogin(username: string, password: string) {
+    if (FRONTEND_ONLY_MODE) {
+      setLoginError(null);
+      setSession({
+        ...previewSession,
+        user: { ...previewSession.user, username: username.trim() || "ui-preview" },
+      });
+      return;
+    }
+
     setLoading(true);
     setLoginError(null);
     try {
@@ -220,6 +272,11 @@ export function App() {
   }
 
   async function runMutation(action: () => Promise<void>, success: string) {
+    if (FRONTEND_ONLY_MODE) {
+      setNotice("Визуальный preview: backend отключён, изменения не сохраняются.");
+      return;
+    }
+
     setLoading(true);
     setNotice(null);
     try {
@@ -248,9 +305,22 @@ export function App() {
 
   async function handleApplyEventFilters(filters: EventFilters) {
     if (!session) return;
-    setLoading(true);
     setEventFilters(filters);
     setSnapshot(null);
+    if (FRONTEND_ONLY_MODE) {
+      setEvents(
+        previewEvents.filter((event) => {
+          if (filters.cameraId && event.camera_id !== filters.cameraId) return false;
+          if (filters.eventType && event.event_type !== filters.eventType) return false;
+          if (filters.dateFrom && new Date(event.timestamp) < new Date(filters.dateFrom)) return false;
+          if (filters.dateTo && new Date(event.timestamp) > new Date(filters.dateTo)) return false;
+          return true;
+        }),
+      );
+      return;
+    }
+
+    setLoading(true);
     try {
       setEvents(await listEvents(session.tokens.access_token, filters));
     } catch (error) {
@@ -262,6 +332,11 @@ export function App() {
 
   async function handleLoadSnapshot(eventId: string) {
     if (!session) return;
+    if (FRONTEND_ONLY_MODE) {
+      setSnapshot({ ...previewSnapshot, event_id: eventId });
+      return;
+    }
+
     setLoading(true);
     setNotice(null);
     try {
@@ -307,6 +382,7 @@ export function App() {
   }
 
   async function handleWebcamDetect(frame: Blob, refreshDashboard = true): Promise<WebcamDetection | null> {
+    if (FRONTEND_ONLY_MODE) return null;
     if (!session) return null;
     if (refreshDashboard) {
       setLoading(true);
@@ -332,6 +408,7 @@ export function App() {
   }
 
   async function handleSaveScanSample(sessionId: string, frame: Blob, detection: WebcamDetection): Promise<number> {
+    if (FRONTEND_ONLY_MODE) return 0;
     if (!session) throw new Error("Необходим вход для сохранения замеров.");
     const result = await saveScanSample(session.tokens.access_token, sessionId, frame, detection);
     return result.sample_count;
@@ -347,6 +424,7 @@ export function App() {
       loading={loading}
       theme={theme}
       user={session.user}
+      previewMode={FRONTEND_ONLY_MODE}
       onLogout={handleLogout}
       onNavigate={setActivePage}
       onRefresh={loadDashboard}
@@ -359,6 +437,7 @@ export function App() {
           aiHealth={aiHealth}
           detection={webcamDetection}
           loading={loading}
+          frontendOnly={FRONTEND_ONLY_MODE}
           onDetectWebcam={handleWebcamDetect}
           onSaveScanSample={handleSaveScanSample}
           onRealtimeDetection={setWebcamDetection}

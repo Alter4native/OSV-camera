@@ -40,6 +40,7 @@ type OverviewPageProps = {
   aiHealth: unknown;
   detection: WebcamDetection | null;
   loading: boolean;
+  frontendOnly: boolean;
   onDetectWebcam: (frame: Blob, refreshDashboard?: boolean) => Promise<WebcamDetection | null>;
   onSaveScanSample: (sessionId: string, frame: Blob, detection: WebcamDetection) => Promise<number>;
   onRealtimeDetection: (detection: WebcamDetection) => void;
@@ -68,6 +69,7 @@ export function OverviewPage({
   aiHealth,
   detection,
   loading,
+  frontendOnly,
   onDetectWebcam,
   onSaveScanSample,
   onRealtimeDetection,
@@ -160,10 +162,14 @@ export function OverviewPage({
   }, [detection, soundEnabled]);
 
   useEffect(() => {
-    void loadCameraDevices();
-    navigator.mediaDevices?.addEventListener?.("devicechange", loadCameraDevices);
+    if (!frontendOnly) {
+      void loadCameraDevices();
+      navigator.mediaDevices?.addEventListener?.("devicechange", loadCameraDevices);
+    }
     return () => {
-      navigator.mediaDevices?.removeEventListener?.("devicechange", loadCameraDevices);
+      if (!frontendOnly) {
+        navigator.mediaDevices?.removeEventListener?.("devicechange", loadCameraDevices);
+      }
       trackingActiveRef.current = false;
       trackingRunIdRef.current += 1;
       scanSessionIdRef.current = null;
@@ -176,9 +182,10 @@ export function OverviewPage({
       void audioContextRef.current?.close();
       audioContextRef.current = null;
     };
-  }, []);
+  }, [frontendOnly]);
 
   async function loadCameraDevices() {
+    if (frontendOnly) return;
     if (!navigator.mediaDevices?.enumerateDevices) {
       return;
     }
@@ -194,6 +201,7 @@ export function OverviewPage({
   }
 
   async function startBrowserCamera(requestedDeviceId?: string, requestedFacingMode?: "user" | "environment"): Promise<boolean> {
+    if (frontendOnly) return false;
     setCameraError(null);
     try {
       trackingActiveRef.current = false;
@@ -285,6 +293,7 @@ export function OverviewPage({
   }
 
   async function flipCamera() {
+    if (frontendOnly) return;
     let devices = cameraDevices;
     try {
       devices = (await navigator.mediaDevices.enumerateDevices()).filter((device) => device.kind === "videoinput");
@@ -439,6 +448,7 @@ export function OverviewPage({
   }
 
   async function detectBrowserFrame() {
+    if (frontendOnly) return;
     const blob = await captureBrowserFrame();
     if (!blob) {
       return;
@@ -557,10 +567,10 @@ export function OverviewPage({
               className={`secondary-button camera-toggle ${cameraReady ? "is-connected" : ""}`}
               type="button"
               onClick={cameraReady ? stopBrowserCamera : () => void startBrowserCamera()}
-              disabled={loading}
+              disabled={loading || frontendOnly}
             >
               <Video aria-hidden="true" />
-              {cameraReady ? "Отключить камеру" : "Включить камеру"}
+              {frontendOnly ? "Камера отключена" : cameraReady ? "Отключить камеру" : "Включить камеру"}
             </button>
             <button
               className="icon-button camera-flip-button"
@@ -568,7 +578,7 @@ export function OverviewPage({
               onClick={() => void flipCamera()}
               aria-label={`Переключить на ${facingMode === "user" ? "заднюю" : "переднюю"} камеру`}
               title={`Переключить на ${facingMode === "user" ? "заднюю" : "переднюю"} камеру`}
-              disabled={loading}
+              disabled={loading || frontendOnly}
             >
               <SwitchCamera aria-hidden="true" />
             </button>
@@ -576,7 +586,7 @@ export function OverviewPage({
               className={`primary-button tracking-toggle ${trackingActive ? "is-running" : ""}`}
               type="button"
               onClick={trackingActive ? stopDetection : () => void detectBrowserFrame()}
-              disabled={loading || !cameraReady}
+              disabled={loading || !cameraReady || frontendOnly}
             >
               {trackingActive ? <Pause aria-hidden="true" /> : <Play aria-hidden="true" />}
               {loading ? "Запускаем..." : trackingActive ? "Остановить анализ" : "Начать анализ"}
@@ -656,8 +666,8 @@ export function OverviewPage({
           {!detection && !trackingActive ? (
             <div className="detection-empty">
               <Crosshair aria-hidden="true" />
-              <strong>{cameraReady ? "Камера готова к анализу" : "Подключите веб-камеру"}</strong>
-              <span>{cameraReady ? "Нажмите «Начать анализ», чтобы отслеживать людей." : "После подключения здесь появится изображение и рамки найденных людей."}</span>
+              <strong>{frontendOnly ? "Камера отключена в визуальном preview" : cameraReady ? "Камера готова к анализу" : "Подключите веб-камеру"}</strong>
+              <span>{frontendOnly ? "Здесь можно проверять макет интерфейса. Запросы к API и AI не выполняются." : cameraReady ? "Нажмите «Начать анализ», чтобы отслеживать людей." : "После подключения здесь появится изображение и рамки найденных людей."}</span>
             </div>
           ) : null}
         </div>
