@@ -2,11 +2,11 @@
     "rewrites":  [
                      {
                          "source":  "/api/:path*",
-                         "destination":  "https://watts-acm-european-toys.trycloudflare.com/api/:path*"
+                         "destination":  "https://satisfy-reasonably-asked-too.trycloudflare.com/api/:path*"
                      },
                      {
                          "source":  "/ai/:path*",
-                         "destination":  "https://watts-acm-european-toys.trycloudflare.com/ai/:path*"
+                         "destination":  "https://satisfy-reasonably-asked-too.trycloudflare.com/ai/:path*"
                      },
                      {
                          "source":  "/(.*)",
